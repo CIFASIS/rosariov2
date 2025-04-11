@@ -37,7 +37,7 @@ To run the scripts we recommend creating a virtual environment and installing th
 python3 -m venv venv
 source venv/bin/activate
 # install requirements
-pip3 install -r requirements.txt
+pip3 install -r scripts/requirements.txt
 ```
 
 All scripts can be run with the `--help` parameter to display the description and arguments they take in, such as:
@@ -55,7 +55,7 @@ docker build -t "rosariov2:ros_humble"
 ```
 or to build with a user having the same linux userid and groupid that you have on your local machine (recommended, as documents created in mounted volumes will be easily modifiable by the local user):
 ```bash
-docker build --build-arg USER_ID=$(id -u ${USER}) --build-arg GROUP_ID=$(id -g ${USER}) --build-arg USER_NAME=${USER} -t "rosariov2:ros_humble"
+docker build --build-arg USER_ID=$(id -u ${USER}) --build-arg GROUP_ID=$(id -g ${USER}) --build-arg USER_NAME=${USER} -t "rosariov2:ros_humble" .
 ```
 then you should be able to run any scripts by running the image in interactive mode.
 

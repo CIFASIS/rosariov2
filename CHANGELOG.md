@@ -13,6 +13,7 @@ Initial Release of the tools
 ### Added
 
 - This repository, to provide useful tools to work with the yet-to-be-released dataset "The Rosario Dataset v2"
+- Scripts to work with the dataset
 - Documentation to work with the scripts
 - A Dockerfile to run the scripts even in incompatible local configurations
 - A License file to protect contributors and users of the tools

@@ -10,7 +10,8 @@ RUN sudo apt update \
         python3-pip \
     && sudo apt install -y \
         ros-noetic-tf2 \
-        ros-noetic-tf2-tools
+        ros-noetic-tf2-tools \
+        ros-noetic-cv-bridge
 
 RUN if [ ${USER_ID:-0} -ne 0 ] && [ ${GROUP_ID:-0} -ne 0 ]; then \
     groupadd -g ${GROUP_ID} ${USER_NAME} && \
