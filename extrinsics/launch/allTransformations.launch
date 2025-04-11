@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<launch>
+
+    <!-- 
+        The base_link is found in the mid-point of the rear axes for the wheels (about 0.285m from the ground).
+        We consider the top towards the sky, and the front towards where the camera points to.
+
+        @author: Erica Vidal
+    -->
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_sensor_box_link" args="1.765 0.0 1.105 0.0 0.0 0.0 1 base_link sensor_box_link"/>
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_front_axis" args="1.65 0.0 0.0 0.0 0.0 0.0 1 base_link front_axis"/>
+
+    <!-- 
+        base_center frame represents the middle point between the base_link and the front axis. 
+        cifacar_models in Modelica outputs the position of the robot in this frame. 
+        It is needed for calibration of the directon 
+    -->
+    <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_base_center" args="0.825 0.0 0.0 0.0 0.0 0.0 1 base_link base_center"/>
+
+    <!--Sensor box-->
+    <include file="$(find coordinate_frames_tf)/launch/sensorBoxTransformations.launch" />
+
+</launch>

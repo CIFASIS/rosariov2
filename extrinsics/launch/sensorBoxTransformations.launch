@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<launch>
+
+  <!-- 
+    The sensor_box_link is found at the bottom most, furthest back piece of the box, centered.
+    We consider the top towards where the gps receivers are mounted, and the front towards where the camera points to.
+
+    @author: Nicolas Soncini
+  -->
+
+
+  <!-- sensor_box_link to GPS antennas (center-bottom, called Antenna Base) -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="sensor_box_link_to_reach_gps1" args="0.04    0.4 0.263 0.0 0.0 0.0 1.0 sensor_box_link reach_gps1"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="sensor_box_link_to_reach_gps2" args="0.04   -0.4 0.263 0.0 0.0 0.0 1.0 sensor_box_link reach_gps2"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="sensor_box_link_to_reach_gps3" args="0.3825  0.0 0.239 0.0 0.0 0.0 1.0 sensor_box_link reach_gps3"/>
+
+  <!-- sensor_box_link to RealSense d435i Origin (mounting hole center, considered origin by Intel's specs)-->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="sensor_box_link_to_realsense_bottom_screw_frame" args="0.312269 0.0 0.051969 0.0 0.1564345 0.0 0.9876883 sensor_box_link realsense_bottom_screw_frame"/>
+
+
+  <!-- RealSense d435i Origin to RealSense d435i IR Left Focal Center (taken from Intel's specs) -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_bottom_screw_frame_to_realsense_infra1_optical_frame" args="-0.011 0.018 0.013 0.5 -0.5 0.5 -0.5 realsense_bottom_screw_frame realsense_infra1_optical_frame"/>
+
+  <!-- RealSense d435i IR Left Focal Center to RealSense d435i IR Right Focal Center (calculated from Kalibr's stereo calibration) -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_infra1_optical_frame_to_realsense_infra2_optical_frame" args="0.050240 0.000032 0.000181 0.0000482 -0.0006391 -0.0000144 0.99999999 realsense_infra1_optical_frame realsense_infra2_optical_frame"/>
+
+  <!-- RealSense d435i IR Left Focal Center to RealSense d435i Color Focal Center (calculated from Kalibr's stereo calibration) -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_infra2_optical_frame_to_realsense_color_optical_frame" args="-0.06363861 -0.00066263 -0.00010325 -0.00170204 -0.00387651  0.00520012  0.99997752 realsense_infra2_optical_frame realsense_color_optical_frame"/>
+
+  <!-- RealSense d435i IR Left Focal Center to RealSense d435i IMU (calculated from Kalibr's stereo-IMU calibration) -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_infra1_optical_frame_to_realsense_imu" args="0.004398 -0.019334 -0.027490 -0.002505  0.000293 -0.001948  0.999994 realsense_infra1_optical_frame realsense_imu"/>
+
+
+  <!-- RealSense IMU to Reach IMUs (both Accelerometer and Magnetometer, calculated from Kalibr's IMU to IMUs calibration)-->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_imu_to_reach_imu1b" args="-0.03328264 -0.09014729 -0.12951963 -0.41522836  0.42277546  0.57759602  0.56145272 realsense_imu reach_imu1"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_imu_to_reach_imu2b" args=" 0.05413669 -0.05020996 -0.1210384  -0.4082114  -0.5625849   0.43126286  0.57521651 realsense_imu reach_imu2"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_imu_to_reach_imu3b" args="-0.02761944 -0.04919555 -0.12547842 -0.10502215 -0.1182785   0.6993272  -0.69708107 realsense_imu reach_imu3"/>
+
+
+</launch>

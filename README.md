@@ -71,6 +71,26 @@ The xhost commands allow for graphical interfaces inside docker to display on yo
 You can mount any number of local volumes as you see fit to generate additional output, save images or read in additional information.
 
 
+## ROS Transformations
+
+A simple ROS module with the transformations between coordinate frames of the robot is provided in the [extrinsics/](extrinsics/) folder.
+The ROS launch files spawn tf2_ros nodes that publish the relevant transformations between coordinate frames.
+
+To build the package it would suffice with including it on your ROS workspace and running:
+```bash
+catkin build extrinsics
+```
+then running it with
+```
+roslaunch extrinsics allTransformations.launch
+```
+
+Another way is to include the launch file in a different launch file of your project with a line similar to:
+```xml
+<include file="$(find extrinsics)/launch/allTransformations.launch"/>
+```
+
+
 ## License
 
 Please make sure to check the license terms of use and attribution on the [LICENSE](LICENSE) file included in this repository.

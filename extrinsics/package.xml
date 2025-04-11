@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="2">
+
+  <name>extrinsics</name>
+  <version>0.1.0</version>
+  <description>Extrinsics package for The Rosario Dataset v2</description>
+  <license>MIT</license>
+
+  <maintainer email="vidal@cifasis-conicet.gov.ar">Erica Vidal</maintainer>
+  <maintainer email="soncini@cifasis-conicet.gov.ar">Nicolas Soncini</maintainer>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>tf2_ros</depend>
+
+</package>
