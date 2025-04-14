@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>The Rosario Dataset v2</title>
+  <meta name="description" content="Project page for The Rosario Dataset v2: Multimodal Dataset for Agricultural Robotics.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
+  <meta charset="utf-8">
+
+  <!--First preview-->
+  <meta property="og:image" content="resources/thumbnail.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="600">
+  <meta property="og:image:height" content="400">
+  <meta property="og:type" content="website"/>
+  <meta property="og:url" content="https://cifasis.github.io/rosariov2/"/>
+  <meta property="og:title" content="The Rosario Dataset v2"/>
+  <meta property="og:description" content="Project page for The Rosario Dataset v2: Multimodal Dataset for Agricultural Robotics."/>
+
+  <!--Twitter preview-->
+  <!-- <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="DTI Clustering" />
+  <meta name="twitter:description" content="Project page for Deep Transformation-Invariant Clustering."/>
+  <meta name="twitter:image" content="https://imagine.enpc.fr/~monniert/DTIClustering/thumbnail_twitter.png"> -->
+
+  <!--Style-->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link href="style.css" rel="stylesheet">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+<div class="container" style="text-align:center; padding:2rem 15px">
+  <div class="row" style="text-align:center">
+    <h1>The Rosario Dataset v2</h1>
+    <h4>Multimodal Dataset for Agricultural Robotics</h4>
+  </div>
+  <div class="row" style="text-align:center">
+    <div class="col-xs-0 col-md-3"></div>
+    <div class="col-xs-12 col-md-6">
+      <h4>
+        <a href="https://www.cifasis-conicet.gov.ar/es/personal/nicolas-soncini"><nobr>Nicolás Soncini</nobr></a> &emsp;
+        <a href="https://www.cifasis-conicet.gov.ar/es/personal/javier-cremona"><nobr>Javier Cremona</nobr></a> &emsp;
+        <a href="https://www.cifasis-conicet.gov.ar/es/personal/erica-vidal"><nobr>Erica Vidal</nobr></a> <br>
+        <a href="https://www.cifasis-conicet.gov.ar/es/personal/maximiliano-garcia"><nobr>Maximiliano García</nobr></a> &emsp;
+        <a href="https://ar.linkedin.com/in/gast%25C3%25B3n-castro-1385381b2"><nobr>Gastón Castro</nobr></a> &emsp;
+        <a href="https://www.cifasis-conicet.gov.ar/taihu/"><nobr>Taihú Pire</nobr></a> &emsp;
+      </h4>
+      CIFASIS, UNR-CONICET, Santa Fe, Argentina <br>
+      UdeSA-CONICET, Buenos Aires, Argentina
+    </div>
+    <div class="hidden-xs hidden-sm col-md-1" style="text-align:left; margin-left:0px; margin-right:0px">
+      <a href="https://arxiv.org/" style="color:inherit">
+        <i class="fa fa-file-pdf-o fa-4x"></i></a> 
+    </div>
+    <div class="hidden-xs hidden-sm col-md-2" style="text-align:left; margin-left:0px;">
+      <a href="https://github.com/CIFASIS/rosariov2" style="color:inherit">
+        <i class="fa fa-github fa-4x"></i></a>
+    </div>
+  </div>
+</div>
+
+<div class="container" style="text-align:center; padding:1rem">
+  <img src="resources/abstract_image.png" alt="abstract_image" class="text-center" style="width: 80%; max-width: 1100px">
+  <h3 style="text-align:center; padding-top:1rem">
+    <a class="label label-info" href="">Paper</a>
+    <a class="label label-info" href="https://arxiv.org/">Pre-Print</a>
+    <a class="label label-info" href="http://fs01.cifasis-conicet.gov.ar:90/~robot_desmalezador/rosariov2/">Dataset</a>
+    <a class="label label-info" href="https://github.com/CIFASIS/rosariov2">Code</a>
+    <!-- <a class="label label-info" href="https://www.youtube.com/embed/">Video</a> -->
+    <a class="label label-info" href="resources/ref.bib">BibTeX</a>
+  </h3>
+</div>
+
+<div class="container">
+  <h3>Abstract</h3>
+  <hr/>
+  <p>
+    We present a <b>multi-modal</b> dataset collected in a soybean crop field, comprising over two hours of recorded data from
+    sensors such as stereo infrared camera, color camera, accelerometer, gyroscope, magnetometer, GNSS (Single Point
+    Positioning, Real-Time Kinematic and Post-Processed Kinematic), and wheel odometry. This dataset captures key
+    challenges inherent to <b>robotics in agricultural environments</b>, including variations in natural lighting, motion blur, rough
+    terrain, and long, perceptually aliased sequences. By addressing these complexities, the dataset aims to support
+    the development and benchmarking of advanced algorithms for <b>localization, mapping, perception, and navigation in
+    agricultural robotics</b>. The platform and data collection system is designed to meet the key requirements for evaluating
+    multi-modal SLAM systems, including hardware synchronization of sensors, 6-DOF ground truth and loops on long
+    trajectories.
+    We run multimodal state-of-the art SLAM methods on the dataset, showcasing the existing limitations in their application
+    on agricultural settings. The dataset is publicly available on 
+    <a href="http://fs01.cifasis-conicet.gov.ar:90/~robot_desmalezador/rosariov2/">http://fs01.cifasis-conicet.gov.ar:90/~robot_desmalezador/rosariov2/</a>,
+    and utilities to work with it are released on <a href="https://github.com/CIFASIS/rosariov2">https://github.com/CIFASIS/rosariov2</a>.
+  </p>
+
+  <h3>Videos</h3>
+  <hr/>
+  <div class="row" style="text-align:center">
+    <div class="col-xs-6 text-center">
+      <h4><u>Dataset presentation</u></h4>
+      <div class="embed-responsive embed-responsive-16by9" style="text-align:center">
+        <iframe class="embed-responsive-item text-center" src="https://www.youtube.com/embed/" frameborder="0"
+          allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+          style="width:100%; clip-path:inset(1px 1px);" allowfullscreen></iframe>
+      </div>
+    </div>
+
+    <div class="col-xs-6 text-center">
+      <h4><u>Dataset sample</u></h4>
+      <div class="embed-responsive embed-responsive-16by9" style="text-align:center">
+        <iframe class="embed-responsive-item text-center" src="https://www.youtube.com/embed/" frameborder="0"
+          allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+          style="width:100%; clip-path:inset(1px 1px);" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+
+
+  <h3>Platform and Sensors</h3>
+  <hr/>
+  <p>
+    The robot consists of a mobile platform with four independently driven wheels.
+    It has been designed with autonomy in agricultural settings in mind.
+    The distance and height of the wheels is consistent with the row distance and height of certain crops such as soybean.
+  </p>
+  <p>
+    The robot was mounted with the following sensors, whose data is available in the dataset:
+  </p>
+  <style type="text/css">
+    .tg  {border-collapse:collapse;border-spacing:0;margin:0px auto;}
+    .tg td{border-bottom-width:1px;border-color:black;border-style:solid;border-top-width:1px;border-width:1px;
+      font-family:Arial, sans-serif;font-size:14px;overflow:hidden;padding:1px 1px;word-break:normal;}
+    .tg th{border-bottom-width:1px;border-color:black;border-style:solid;border-top-width:1px;border-width:1px;
+      font-family:Arial, sans-serif;font-size:14px;font-weight:normal;overflow:hidden;padding:5px 1px;word-break:normal;}
+    .tg .tg-18eh{border-color:#000000;font-weight:bold;text-align:center;vertical-align:middle}
+    .tg .tg-xwyw{border-color:#000000;text-align:center;vertical-align:middle}
+  </style>
+  <table class="tg">
+    <thead>
+      <tr>
+        <th class="tg-18eh">Name<br></th>
+        <th class="tg-18eh">Sensor</th>
+        <th class="tg-18eh">Resolution /<br>Range<br></th>
+        <th class="tg-18eh">Acquisition Rate</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="tg-xwyw" rowspan="3">Intel Realsense D435i</td>
+        <td class="tg-xwyw">Stereo IR Camera</td>
+        <td class="tg-xwyw">1280px × 720px<br>87° × 58°</td>
+        <td class="tg-xwyw">15Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw">Color Camera</td>
+        <td class="tg-xwyw">1280px x 720px<br>69° × 42°</td>
+        <td class="tg-xwyw">15Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw">IMU<br></td>
+        <td class="tg-xwyw">± 4g<br>± 1000deg/s</td>
+        <td class="tg-xwyw">200Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw" rowspan="3">Emlid Reach M1</td>
+        <td class="tg-xwyw">GNSS</td>
+        <td class="tg-xwyw">± 2.5m</td>
+        <td class="tg-xwyw">5Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw">RTK-GNSS</td>
+        <td class="tg-xwyw">±0.04m</td>
+        <td class="tg-xwyw">5Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw">9-DoF IMU</td>
+        <td class="tg-xwyw">± 8g<br>± 1000deg/s</td>
+        <td class="tg-xwyw">200Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw" rowspan="3">Emlid Reach M2 (1)</td>
+        <td class="tg-xwyw">GNSS</td>
+        <td class="tg-xwyw">± 2.5m</td>
+        <td class="tg-xwyw">5Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw">RTK-GNSS</td>
+        <td class="tg-xwyw">±0.04m</td>
+        <td class="tg-xwyw">5Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw">9-DoF IMU</td>
+        <td class="tg-xwyw">± 8g<br>± 1000deg/s</td>
+        <td class="tg-xwyw">200Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw" rowspan="3">Emlid Reach M2 (2)</td>
+        <td class="tg-xwyw">GNSS</td>
+        <td class="tg-xwyw">± 2.5m</td>
+        <td class="tg-xwyw">5Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw">RTK-GNSS</td>
+        <td class="tg-xwyw">±0.04m</td>
+        <td class="tg-xwyw">5Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw">IMU</td>
+        <td class="tg-xwyw">± 8g<br>± 1000deg/s</td>
+        <td class="tg-xwyw">200Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw">E-Bike Wheel<br>Odometer</td>
+        <td class="tg-xwyw">Hall-Effect Odometry</td>
+        <td class="tg-xwyw">± 7.5°<br></td>
+        <td class="tg-xwyw">10Hz</td>
+      </tr>
+      <tr>
+        <td class="tg-xwyw">OMRON<br>E6CP-A</td>
+        <td class="tg-xwyw">8-bit Absolute Encoder</td>
+        <td class="tg-xwyw">± 1.4°<br> 92°</td>
+        <td class="tg-xwyw">10Hz</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <h3>Sequences</h3>
+  <hr/>
+  <div class="container" style="text-align:center; padding:1rem">
+    <p>
+        The dataset consists of six separately recorded sequences of the robot traversing a soybean plantation.
+        The first three sequences (sequences from the first day) took place on December 22nd of 2023, in a given field,
+        and the remaining three sequences (sequences from the second day) took place on December 26th of 2023, in a
+        different field from the first.
+    </p>
+    <p>
+        The following image shows the trajectories recorded from the six sequences:
+    </p>
+    <img src="resources/map_and_trajectories.png" alt="map_and_trajectories" class="text-center" style="width: 100%; max-width: 900px; margin-bottom: 1cm">
+    <p>
+        Some sample images taken from the RealSense D435i color camera and stereo infrared camera (left camera shown here)
+        are shown in the following image, one pair for each trajectory:
+    </p>
+    <img src="resources/camera_samples.png" alt="camera_samples" class="text-center" style="width: 100%; max-width: 900px">
+  </div>
+
+
+
+  <h3>Known Issues and Changes</h3>
+  <hr/>
+  All issues and changes to the dataset that deviate from the publication will be added to the 
+  <a href="https://github.com/CIFASIS/rosariov2/blob/main/CHANGELOG.md">CHANGELOG</a> 
+  file in the repository.<br/>
+  Major changes will also be added to this page if they are deemed critical.
+
+
+  <h3>Further Work</h3>
+  <hr/>
+  Make sure to check out our previous dataset as well as related work from our group:
+  <ul>
+    <li>
+        <a href="https://arxiv.org/abs/2408.15761">Soncini et al. - Addressing the challenges of loop detection in 
+            agricultural environments (JoFR 2024)</a>
+    </li>
+    <li>
+        <a href="https://arxiv.org/abs/2307.12836">Cremona et al. - GNSS-Stereo-Inertial SLAM for Arable Farming
+            (JoFR 2023)</a>
+    </li>
+    <li>
+        <a href="https://ieeexplore.ieee.org/document/10130836">Ait et al. - A Travelling Salesman Problem Approach to Efficiently
+             Navigate Crop Row Fields with a Car-Like Robot (IEEE-LAT 2023)</a>
+    </li>
+    <li>
+        <a href="https://arxiv.org/abs/1908.04725">Cremona et al. - Experimental Evaluation of Visual-Inertial Odometry
+            Systems for Arable Farming (JoFR 2022)</a>
+    </li>
+    <li>
+        <a href="https://arxiv.org/abs/1809.06413">Pire et al. - The Rosario Dataset: Multisensor Data for Localization 
+            and Mapping in Agricultural Environments (IJRR 2019)</a>
+      </li>
+  </ul>
+
+
+  <h3>Acknowledgements</h3>
+  <hr/>
+  <p>
+    This work was partially supported by Consejo Nacional de Investigaciones Cientı́ficas y Técnicas (Argentina) under
+    grants PIBAA No.0042, AGENCIA I+D+i (PICT 2021-570), and by Universidad Nacional de Rosario 
+    (PCCT-UNR 80020220600072UR).
+    <br/>
+    We specially thank Engr. Néstor Di Leo from the Land Management Chair of the Faculty of Agricultural Sciences of the
+     National University of Rosario for giving us access to the agricultural field.
+  </p>
+  <h4 style="padding-top:0.5em">BibTeX</h4>
+    If you find this work useful for your research, please cite:
+    <div class="card">
+      <div class="card-block">
+        <pre class="card-text clickselect">
+@unpublished{soncini2024rosariov2,
+    title={{The Rosario Dataset v2: Multimodal Dataset for Agricultural Robotics}},
+    author={Soncini, Nicolas and Cremona, Javier and Vidal, Erica and García, Maximiliano and Castro, Gastón and Pire, Taihú},
+    year={2024}
+}</pre>
+      </div>
+    </div>
+</div>
+
+<div class="container" style="padding-top:3rem; padding-bottom:3rem">
+  <p style="text-align:center">
+  &#169; This webpage was in part inspired from this
+  <a href="https://github.com/monniert/project-webpage">template</a>.
+  </p>
+</div>
+
+</body>
+</html>
