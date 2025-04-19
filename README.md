@@ -79,6 +79,7 @@ The ROS launch files spawn tf2_ros nodes that publish the relevant transformatio
 To build the package it would suffice with including it on your ROS workspace and running:
 ```bash
 catkin build extrinsics
+source devel/setup.bash
 ```
 then running it with
 ```
@@ -88,6 +89,17 @@ roslaunch extrinsics allTransformations.launch
 Another way is to include the launch file in a different launch file of your project with a line similar to:
 ```xml
 <include file="$(find extrinsics)/launch/allTransformations.launch"/>
+```
+
+## ROS Messages
+
+Some messages recorded in the rosbags are custom made for specific sensor or log data, for this you will have to include the message definitions included in the [wheel_odometry/](wheel_odometry/) folder in your ROS workspace or at least have it built and sourced when running anything that would need them.
+We have compiled them as a ROS package, so you can simply copy or link it to your ROS workspace to build the message interfaces.
+
+To build the package it would suffice with including it on your ROS workspace and running:
+```bash
+catkin build wheel_odometry
+source devel/setup.bash
 ```
 
 
