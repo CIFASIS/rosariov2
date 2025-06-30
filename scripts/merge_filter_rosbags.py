@@ -1,8 +1,8 @@
 # merge_filter_rosbags.py by Centro Internacional Franco-Argentino de
 # Ciencias de la Información y Sistemas is licensed under a
-# MIT License.
+# BSD 2-Clause License.
 # You should have received a copy of the license along with this
-# work. If not, see <https://opensource.org/license/mit/>.
+# work. If not, see <https://opensource.org/license/bsd-2-clause>.
 
 """
 Merge one or more bag files and filter for specific topics.
