@@ -105,4 +105,5 @@ source devel/setup.bash
 
 ## License
 
+All data in the Rosario Dataset v2 is licensed under a [Creative Commons 4.0 Attribution License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) and the accompanying source code is licensed under a [BSD-2-Clause License](https://opensource.org/license/BSD-2-Clause).
 Please make sure to check the license terms of use and attribution on the [LICENSE](LICENSE) file included in this repository.
