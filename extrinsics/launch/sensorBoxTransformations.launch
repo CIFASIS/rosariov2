@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
 BSD 2-Clause License
 
@@ -28,7 +29,6 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-<?xml version="1.0" encoding="UTF-8"?>
 
 <launch>
 
@@ -36,14 +36,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     The sensor_box_link is found at the bottom most, furthest back piece of the box, centered.
     We consider the top towards where the gps receivers are mounted, and the front towards where the camera points to.
 
+    Extrinsics differ between Dec 22 and Dec 26. We add the parameter day to select between them.
+
     @author: Nicolas Soncini
   -->
+
+  <!-- gps3 antenna was moved between day 1 (Dec 22) and day 2 (Dec 26) recordings -->
+  <arg name="day" default="1" />
 
 
   <!-- sensor_box_link to GPS antennas (center-bottom, called Antenna Base) -->
   <node pkg="tf2_ros" type="static_transform_publisher" name="sensor_box_link_to_reach_gps1" args="0.04    0.4 0.263 0.0 0.0 0.0 1.0 sensor_box_link reach_gps1"/>
   <node pkg="tf2_ros" type="static_transform_publisher" name="sensor_box_link_to_reach_gps2" args="0.04   -0.4 0.263 0.0 0.0 0.0 1.0 sensor_box_link reach_gps2"/>
-  <node pkg="tf2_ros" type="static_transform_publisher" name="sensor_box_link_to_reach_gps3" args="0.3825  0.0 0.239 0.0 0.0 0.0 1.0 sensor_box_link reach_gps3"/>
+  <group if="$(eval arg('day') == 1)">
+    <node pkg="tf2_ros" type="static_transform_publisher" name="sensor_box_link_to_reach_gps3" args="0.44  0.0 0.239 0.0 0.0 0.0 1.0 sensor_box_link reach_gps3"/>
+  </group>
+  <group if= "$(eval arg('day') == 2)">
+    <node pkg="tf2_ros" type="static_transform_publisher" name="sensor_box_link_to_reach_gps3" args="0.3825  0.0 0.239 0.0 0.0 0.0 1.0 sensor_box_link reach_gps3"/>
+  </group>
 
   <!-- sensor_box_link to RealSense d435i Origin (mounting hole center, considered origin by Intel's specs)-->
   <node pkg="tf2_ros" type="static_transform_publisher" name="sensor_box_link_to_realsense_bottom_screw_frame" args="0.312269 0.0 0.051969 0.0 0.1564345 0.0 0.9876883 sensor_box_link realsense_bottom_screw_frame"/>
@@ -63,9 +73,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
   <!-- RealSense IMU to Reach IMUs (both Accelerometer and Magnetometer, calculated from Kalibr's IMU to IMUs calibration)-->
-  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_imu_to_reach_imu1b" args="-0.03328264 -0.09014729 -0.12951963 -0.41522836  0.42277546  0.57759602  0.56145272 realsense_imu reach_imu1"/>
-  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_imu_to_reach_imu2b" args=" 0.05413669 -0.05020996 -0.1210384  -0.4082114  -0.5625849   0.43126286  0.57521651 realsense_imu reach_imu2"/>
-  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_imu_to_reach_imu3b" args="-0.02761944 -0.04919555 -0.12547842 -0.10502215 -0.1182785   0.6993272  -0.69708107 realsense_imu reach_imu3"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_imu_to_reach_imu1" args="-0.03328264 -0.09014729 -0.12951963 -0.41522836  0.42277546  0.57759602  0.56145272 realsense_imu reach_imu1"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_imu_to_reach_imu2" args=" 0.05413669 -0.05020996 -0.1210384  -0.4082114  -0.5625849   0.43126286  0.57521651 realsense_imu reach_imu2"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="realsense_imu_to_reach_imu3" args="-0.02761944 -0.04919555 -0.12547842 -0.10502215 -0.1182785   0.6993272  -0.69708107 realsense_imu reach_imu3"/>
 
 
 </launch>

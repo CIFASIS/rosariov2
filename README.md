@@ -76,6 +76,9 @@ You can mount any number of local volumes as you see fit to generate additional 
 A simple ROS module with the transformations between coordinate frames of the robot is provided in the [extrinsics/](extrinsics/) folder.
 The ROS launch files spawn tf2_ros nodes that publish the relevant transformations between coordinate frames.
 
+**IMPORTANT:** Transformations of the gps3 (Reach M1) antenna changed between the first (Dec 22) and second (Dec 26) day of recording.
+We provided separate launch files for each of these days (`allTransformationsDay1` and `allTransformationsDay2`), or you can launch the `sensorBoxTransformations` with the appropiate argument (`day:=1` or `day:=2`).
+
 To build the package it would suffice with including it on your ROS workspace and running:
 ```bash
 catkin build extrinsics
@@ -83,12 +86,12 @@ source devel/setup.bash
 ```
 then running it with
 ```
-roslaunch extrinsics allTransformations.launch
+roslaunch extrinsics allTransformationsDayX.launch
 ```
 
 Another way is to include the launch file in a different launch file of your project with a line similar to:
 ```xml
-<include file="$(find extrinsics)/launch/allTransformations.launch"/>
+<include file="$(find extrinsics)/launch/allTransformationsDayX.launch"/>
 ```
 
 ## ROS Messages
