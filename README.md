@@ -2,7 +2,7 @@
 
 These files provide utilities to work with the dataset published in:
 ```text
-@unpublished{rosariodatasetv2,
+@unpublished{soncini2025rosario,
   title  = {The Rosario Dataset v2: Multimodal Dataset for Agricultural Robotics},
   author = {Nicolás Soncini and Javier Cremona and Erica Vidal and Maximiliano García and Gastón Castro and Taihú Pire},
   note   = {Submitted to The International Journal of Robotics Research (IJRR)},
