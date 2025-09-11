@@ -2,13 +2,14 @@
 
 These files provide utilities to work with the dataset published in:
 ```text
-@unpublished{soncini2025rosario,
-  title  = {The Rosario Dataset v2: Multimodal Dataset for Agricultural Robotics},
+@article{doi:10.1177/02783649251368909,
   author = {Nicolás Soncini and Javier Cremona and Erica Vidal and Maximiliano García and Gastón Castro and Taihú Pire},
-  note   = {Submitted to The International Journal of Robotics Research (IJRR)},
-  month  = {},
-  year   = {2025},
-  annote = {}
+  title ={The Rosario dataset v2: Multi-modal dataset for agricultural robotics},
+  journal = {The International Journal of Robotics Research},
+  year = {2025},
+  pages = {02783649251368909},
+  doi = {10.1177/02783649251368909},
+  URL = {https://doi.org/10.1177/02783649251368909}
 }
 ```
 please cite our work if you use these utilities and/or the dataset itself.
@@ -113,7 +114,7 @@ To convert the rosbags from ROS1 (Noetic) to ROS2 we recommend the following ste
 2. Follow the steps for converting a rosbag1 to a rosbag2 listed [here](https://ternaris.gitlab.io/rosbags/topics/convert.html), or by running the following command:  
 ```$ rosbags-convert --src [SOURCE_ROSBAG1] --src-typestore ros1_noetic --dst [DESTINATION_ROSBAG2_FOLDER] --dst-typestore ros2_humble```  
 We also provide an automated script that converts all rosbags to ROS2 under [scripts/rosbags_conversion.sh](scripts/rosbags_conversion.sh).
-3. Build and source the ROS2 packages found under [scripts/rosbags2_ws](scripts/rosbags2_ws/):  
+3. Build and source the ROS2 packages found under [scripts/rosbags2_ws](scripts/rosbags2_ws/) to replay the custom message definitions:  
 ```$ cd scripts/rosbags2_ws && colcon build && source install/setup.bash```
 
 After this you should be able to play the newly created rosbags with `ros2 bag play` without any problem. The packages will allow you to read and replay our custom messages.
