@@ -258,6 +258,35 @@ class TwistStampedProcessor(Msg2CSVProcessor):
         self.writer.writerow(row)
 
 
+class PoseWithCovarianceStampedProcessor(Msg2CSVProcessor):
+    save_path: str = "posewcovar_stamped.csv"
+    header: List[str] = [
+        "nsec",
+        "position", "orientation", "covariance"]
+
+    def process_message(self, msg, t):
+        position = [
+            msg.pose.pose.position.x, 
+            msg.pose.pose.position.y, 
+            msg.pose.pose.position.z,
+            msg.pose.pose.position.w
+        ]
+        orientation = [
+            msg.pose.pose.orientation.x, 
+            msg.pose.pose.orientation.y, 
+            msg.pose.pose.orientation.z,
+            msg.pose.pose.orientation.w
+        ]
+
+        row = [
+            msg.header.stamp.to_nsec(),
+            position,
+            orientation,
+            msg.pose.covariance,
+        ]
+        self.writer.writerow(row)
+
+
 def extraxct_rosbag_data(
         bag_file: rosbag.Bag, processors: Dict[str, MsgProcessor]):
     for topic, msg, t in bag_file.read_messages(topics=processors.keys()):
@@ -376,10 +405,9 @@ if __name__ == '__main__':
         '/reach_3/ppk/vel': TwistStampedProcessor(
             path=output_folder/'reach3'/'ppk_vel.csv'),
 
-        # TODO: process/extract MINS ground truth
-        # '/mins/imu/pose': PoseWithCovarianceStampedProcessor(
-        #     path=output_folder/'mins'/'imu_pose.csv'
-        # ),
+        '/mins/imu/pose': PoseWithCovarianceStampedProcessor(
+            path=output_folder/'mins'/'imu_pose.csv'
+        ),
     }
 
     # check input path and open rosbag file
