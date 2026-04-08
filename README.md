@@ -14,9 +14,9 @@ These files provide utilities to work with the dataset published in:
 ```
 please cite our work if you use these utilities and/or the dataset itself.
 
-The dataset will be made available once the publication goes through.
-Any changes made to the scripts, as well as the data included in the dataset, will be made explicit in the [CHANGELOG.md](CHANGELOG.md) file included in this repository.
-A copy of this file should have also been provided along with the dataset itself.
+The official website for the dataset is: https://cifasis.github.io/rosariov2/
+Any changes made to the scripts will be made explicit in the [CHANGELOG.md](CHANGELOG.md) file included in this repository.
+Any changes made to the dataset will be made explicit in the [CHANGELOG.md](http://fs01.cifasis-conicet.gov.ar:90/~robot_desmalezador/rosariov2/CHANGELOG.md) file provided with the dataset.
 
 
 ## Usage
