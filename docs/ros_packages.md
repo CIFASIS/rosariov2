@@ -49,7 +49,7 @@ Another way is to include the launch file in a different launch file of your pro
 
 To build the package with the launch file for ROS2 you can head to the `ros2_ws` folder and run:
 ```bash
-colcon build --packages-select extrinsics
+colcon build --symlink-install --packages-select extrinsics
 source install/setup.bash
 ```
 then running it with
@@ -58,3 +58,5 @@ ros2 launch extrinsics extrinsics.launch.py day:=1
 # or for day 2:
 ros2 launch extrinsics extrinsics.launch.py day:=2
 ```
+
+You will see the topic `/tf_static` published with extrinsic transformations.
