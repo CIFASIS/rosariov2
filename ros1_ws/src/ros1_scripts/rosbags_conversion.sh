@@ -26,7 +26,7 @@ echo "Starting rosbag conversion..."
 for seq in "${rosariov2seqs[@]}" 
 do
     echo "Converting" ${bag}
-    rosbags-convert --src "$1/$seq.compressed.bag" --src-typestore ros1_noetic --dst "$1/rosbags2/$seq" --dst-typestore ros2_humble
+    rosbags-convert --src "$1/$seq.compressed.bag" --src-typestore ros1_noetic --dst "$1/rosbags2/$seq" --dst-typestore ros2_jazzy --dst-storage mcap
 done
 
 echo "Done!"
