@@ -4,6 +4,7 @@
   <name>wheel_control</name>
   <version>0.1.0</version>
   <description>Wheel Control package for custom Rosariov2 messages</description>
+  <license>MIT</license>
   
   <maintainer email="vidal@cifasis-conicet.gov.ar">Erica Vidal</maintainer>
   <maintainer email="soncini@cifasis-conicet.gov.ar">Nicolas Soncini</maintainer>
