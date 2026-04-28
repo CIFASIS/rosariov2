@@ -21,7 +21,8 @@ RUN if [ ${USER_ID:-0} -ne 0 ] && [ ${GROUP_ID:-0} -ne 0 ]; then \
     echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers\
 ;fi
 
-RUN ["/bin/bash", "-c", "source /opt/ros/noetic/setup.bash"]
-
 USER ${USER_NAME}
 WORKDIR /home/${USER_NAME}
+
+# Automatically source ROS 2 in every new bash session
+RUN echo "source /opt/ros/noetic/setup.bash" >> /home/${USER_NAME}/.bashrc

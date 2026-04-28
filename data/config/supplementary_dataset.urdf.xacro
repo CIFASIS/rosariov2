@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+BSD 2-Clause License
+
+This file is part of The Rosario Dataset v2 project.
+https://github.com/CIFASIS/rosariov2
+
+Copyright (c) 2025, Centro Internacional Franco-Argentino de Ciencias de la Información y Sistemas (CIFASIS)
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+
+<robot name="supplementary_dataset" 
+       xmlns:xacro="http://ros.org/wiki/xacro"
+       xmlns:math="python:math"
+       xmlns:np="python:numpy">
+
+    <xacro:macro name="origin_from_quat" params="xyz quat">
+        <xacro:property name="qx" value="${float(quat.split()[0])}"/>
+        <xacro:property name="qy" value="${float(quat.split()[1])}"/>
+        <xacro:property name="qz" value="${float(quat.split()[2])}"/>
+        <xacro:property name="qw" value="${float(quat.split()[3])}"/>
+
+        <xacro:property name="roll" value="${math.atan2(2*(qw*qx + qy*qz), 1 - 2*(qx*qx + qy*qy))}"/>
+        <xacro:property name="pitch" value="${math.asin(2*(qw*qy - qz*qx))}"/>
+        <xacro:property name="yaw" value="${math.atan2(2*(qw*qz + qx*qy), 1 - 2*(qy*qy + qz*qz))}"/>
+
+        <origin xyz="${xyz}" rpy="${roll} ${pitch} ${yaw}"/>
+    </xacro:macro>
+
+    <link name="base_link" /> <link name="imu_link" />
+    <link name="front_axis" />
+    <link name="mag_link" />
+    <link name="zed_camera_left_optical_frame" />
+    <link name="zed_camera_right_optical_frame" />
+    <link name="gps" />
+    <link name="reach_rs" />
+
+    <link name="valve0" /><link name="valve1" /><link name="valve2" />
+    <link name="valve3" /><link name="valve4" /><link name="valve5" />
+    <link name="valve6" /><link name="valve7" /><link name="valve8" />
+
+    <joint name="base_link_to_imu" type="fixed">
+        <parent link="base_link"/>
+        <child link="imu_link"/>
+        <xacro:origin_from_quat xyz="2.065 0.0 1.144" quat="0.0 -0.7193 0.0 0.6946"/> </joint>
+
+    <joint name="base_link_to_front_axis" type="fixed">
+        <parent link="base_link"/>
+        <child link="front_axis"/>
+        <xacro:origin_from_quat xyz="1.65 0.0 0.0" quat="0.0 0.0 0.0 1.0"/> </joint>
+
+    <joint name="base_link_to_gps" type="fixed">
+        <parent link="base_link"/>
+        <child link="gps"/>
+        <xacro:origin_from_quat xyz="2.124 0.005 1.4365" quat="0 0 0 1"/> </joint>
+
+    <joint name="gps_to_fix" type="fixed">
+        <parent link="gps"/>
+        <child link="reach_rs"/>
+        <xacro:origin_from_quat xyz="0 0 0" quat="0 0 0 1"/> </joint>
+
+    <joint name="imu_to_compass" type="fixed">
+        <parent link="imu_link"/>
+        <child link="mag_link"/>
+        <xacro:origin_from_quat xyz="0 0 0" quat="0.7071068 0.7071068 0 0"/> </joint>
+
+    <joint name="imu_to_camera_left" type="fixed">
+        <parent link="imu_link"/>
+        <child link="zed_camera_left_optical_frame"/>
+        <xacro:origin_from_quat xyz="-0.039 0.059 -0.1305" quat="-0.6916548 0.6916548 0.1470157 -0.14701576"/> </joint>
+
+    <joint name="camera_left_to_camera_right" type="fixed">
+        <parent link="zed_camera_left_optical_frame"/>
+        <child link="zed_camera_right_optical_frame"/>
+        <xacro:origin_from_quat xyz="0.12 0 0" quat="0 0 0 1"/> </joint>
+
+    <xacro:macro name="valve_joint" params="suffix y_offset">
+        <joint name="base_link_to_valve${suffix}" type="fixed">
+            <parent link="base_link"/>
+            <child link="valve${suffix}"/>
+            <origin xyz="-0.405 ${y_offset} 0.405" rpy="0 0 0"/>
+        </joint>
+    </xacro:macro>
+
+    <xacro:valve_joint suffix="0" y_offset="1.04"/>
+    <xacro:valve_joint suffix="1" y_offset="0.78"/>
+    <xacro:valve_joint suffix="2" y_offset="0.52"/>
+    <xacro:valve_joint suffix="3" y_offset="0.26"/>
+    <xacro:valve_joint suffix="4" y_offset="0"/>
+    <xacro:valve_joint suffix="5" y_offset="-0.26"/>
+    <xacro:valve_joint suffix="6" y_offset="-0.52"/>
+    <xacro:valve_joint suffix="7" y_offset="-0.78"/>
+    <xacro:valve_joint suffix="8" y_offset="-1.04"/>
+
+</robot>

@@ -1,0 +1,8 @@
+<launch>
+  <arg name="day" default="1" />
+
+  <param name="robot_description" 
+         command="$(find xacro)/xacro '$(find extrinsics)/urdf/rosario_v2.urdf.xacro' day:=$(arg day)" />
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+</launch>

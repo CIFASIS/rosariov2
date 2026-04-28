@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+BSD 2-Clause License
+
+This file is part of The Rosario Dataset v2 project.
+https://github.com/CIFASIS/rosariov2
+
+Copyright (c) 2025, Centro Internacional Franco-Argentino de Ciencias de la Información y Sistemas (CIFASIS)
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+
+
+<robot name="rosario_v2" 
+       xmlns:xacro="http://ros.org/wiki/xacro"
+       xmlns:math="python:math"
+       xmlns:np="python:numpy">
+
+    <xacro:arg name="day" default="1" />
+
+    <xacro:macro name="origin_from_quat" params="xyz quat">
+        <xacro:property name="qx" value="${float(quat.split()[0])}"/>
+        <xacro:property name="qy" value="${float(quat.split()[1])}"/>
+        <xacro:property name="qz" value="${float(quat.split()[2])}"/>
+        <xacro:property name="qw" value="${float(quat.split()[3])}"/>
+
+        <xacro:property name="roll" value="${math.atan2(2*(qw*qx + qy*qz), 1 - 2*(qx*qx + qy*qy))}"/>
+        <xacro:property name="pitch" value="${math.asin(2*(qw*qy - qz*qx))}"/>
+        <xacro:property name="yaw" value="${math.atan2(2*(qw*qz + qx*qy), 1 - 2*(qy*qy + qz*qz))}"/>
+
+        <origin xyz="${xyz}" rpy="${roll} ${pitch} ${yaw}"/>
+    </xacro:macro>
+
+    <link name="base_link" />
+    <link name="sensor_box_link" />
+    <link name="front_axis" />
+    <link name="base_center" />
+    
+    <link name="reach_gps1" />
+    <link name="reach_gps2" />
+    <link name="reach_gps3" />
+
+    <link name="realsense_bottom_screw_frame" />
+    <link name="realsense_infra1_optical_frame" />
+    <link name="realsense_infra2_optical_frame" />
+    <link name="realsense_color_optical_frame" />
+    <link name="realsense_imu" />
+
+    <link name="reach_imu1" />
+    <link name="reach_imu2" />
+    <link name="reach_imu3" />
+
+    <joint name="base_to_sensor_box" type="fixed">
+        <parent link="base_link"/>
+        <child link="sensor_box_link"/>
+        <xacro:origin_from_quat xyz="1.765 0.0 1.105" quat="0.0 0.0 0.0 1.0"/>
+    </joint>
+
+    <joint name="base_to_front_axis" type="fixed">
+        <parent link="base_link"/>
+        <child link="front_axis"/>
+        <xacro:origin_from_quat xyz="1.65 0.0 0.0" quat="0.0 0.0 0.0 1.0"/>
+    </joint>
+
+    <joint name="base_to_base_center" type="fixed">
+        <parent link="base_link"/>
+        <child link="base_center"/>
+        <xacro:origin_from_quat xyz="0.825 0.0 0.0" quat="0.0 0.0 0.0 1.0"/>
+    </joint>
+
+    <joint name="sensor_box_to_gps1" type="fixed">
+        <parent link="sensor_box_link"/>
+        <child link="reach_gps1"/>
+        <xacro:origin_from_quat xyz="0.04 0.4 0.263" quat="0.0 0.0 0.0 1.0"/>
+    </joint>
+
+    <joint name="sensor_box_to_gps2" type="fixed">
+        <parent link="sensor_box_link"/>
+        <child link="reach_gps2"/>
+        <xacro:origin_from_quat xyz="0.04 -0.4 0.263" quat="0.0 0.0 0.0 1.0"/>
+    </joint>
+
+    <joint name="sensor_box_to_gps3" type="fixed">
+        <parent link="sensor_box_link"/>
+        <child link="reach_gps3"/>
+        <xacro:if value="${str($(arg day)) == '1'}">
+            <xacro:origin_from_quat xyz="0.44 0.0 0.239" quat="0.0 0.0 0.0 1.0"/>
+        </xacro:if>
+        <xacro:if value="${str($(arg day)) == '2'}">
+            <xacro:origin_from_quat xyz="0.3825 0.0 0.239" quat="0.0 0.0 0.0 1.0"/>
+        </xacro:if>
+    </joint>
+
+    <joint name="sensor_box_to_rs_screw" type="fixed">
+        <parent link="sensor_box_link"/>
+        <child link="realsense_bottom_screw_frame"/>
+        <xacro:origin_from_quat xyz="0.312269 0.0 0.051969" quat="0.0 0.1564345 0.0 0.9876883"/>
+    </joint>
+
+    <joint name="rs_screw_to_infra1" type="fixed">
+        <parent link="realsense_bottom_screw_frame"/>
+        <child link="realsense_infra1_optical_frame"/>
+        <xacro:origin_from_quat xyz="-0.011 0.018 0.013" quat="0.5 -0.5 0.5 -0.5"/>
+    </joint>
+
+    <joint name="infra1_to_infra2" type="fixed">
+        <parent link="realsense_infra1_optical_frame"/>
+        <child link="realsense_infra2_optical_frame"/>
+        <xacro:origin_from_quat xyz="0.050240 0.000032 0.000181" quat="0.0000482 -0.0006391 -0.0000144 0.99999999"/>
+    </joint>
+
+    <joint name="infra2_to_color" type="fixed">
+        <parent link="realsense_infra2_optical_frame"/>
+        <child link="realsense_color_optical_frame"/>
+        <xacro:origin_from_quat xyz="-0.06363861 -0.00066263 -0.00010325" quat="-0.00170204 -0.00387651 0.00520012 0.99997752"/>
+    </joint>
+
+    <joint name="infra1_to_imu" type="fixed">
+        <parent link="realsense_infra1_optical_frame"/>
+        <child link="realsense_imu"/>
+        <xacro:origin_from_quat xyz="0.004398 -0.019334 -0.027490" quat="-0.002505 0.000293 -0.001948 0.999994"/>
+    </joint>
+
+    <joint name="rs_imu_to_reach1" type="fixed">
+        <parent link="realsense_imu"/>
+        <child link="reach_imu1"/>
+        <xacro:origin_from_quat xyz="-0.03328264 -0.09014729 -0.12951963" quat="-0.41522836 0.42277546 0.57759602 0.56145272"/>
+    </joint>
+
+    <joint name="rs_imu_to_reach2" type="fixed">
+        <parent link="realsense_imu"/>
+        <child link="reach_imu2"/>
+        <xacro:origin_from_quat xyz="0.05413669 -0.05020996 -0.1210384" quat="-0.4082114 -0.5625849 0.43126286 0.57521651"/>
+    </joint>
+
+    <joint name="rs_imu_to_reach3" type="fixed">
+        <parent link="realsense_imu"/>
+        <child link="reach_imu3"/>
+        <xacro:origin_from_quat xyz="-0.02761944 -0.04919555 -0.12547842" quat="-0.10502215 -0.1182785 0.6993272 -0.69708107"/>
+    </joint>
+
+</robot>
