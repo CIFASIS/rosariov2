@@ -15,6 +15,7 @@ RUN apt update && apt install -y \
         ros-jazzy-cv-bridge \
         ros-jazzy-xacro \
         ros-jazzy-robot-state-publisher \
+        ros-jazzy-rosbag2-storage-mcap \
     && rm -rf /var/lib/apt/lists/*
 
 # Create user with same UID/GID as the host [cite: 34]
