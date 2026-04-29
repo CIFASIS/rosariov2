@@ -1,13 +1,13 @@
 # Running Scripts
 
-To run the scripts inside the scripts folrders [ros1_ws/ros1_scripts](ros1_ws/ros1_scripts) or [ros2_ws/ros2_scripts](ros2_ws/ros2_scripts) you are probably going to need to be inside the corresponding ROS1 or ROS2 environment, respectively.
+To run the scripts inside the scripts folders [ros1_ws/ros1_scripts](ros1_ws/ros1_scripts) or [ros2_ws/ros2_scripts](ros2_ws/ros2_scripts) you are probably going to need to be inside the corresponding ROS1 or ROS2 environment, respectively.
 You can check if this is the case for the script you want to run by verifying if any ros-related packages are being imported at the beginning (such as the `rosbag`, `rospy` or `rclpy` packages).
 
-The scripts can be run inside the docker environments directly by installing the depdenencies listed in the correspondin requirements.txt files in the folder:
+The scripts can be run inside the docker environments directly by installing the dependencies listed in the corresponding requirements.txt files in the folder:
 ```bash
 pip3 install -r scripts/requirements.txt
 ```
-you can also create a virtual environment to isolate dependencies, useful if running it inside your own machine:
+You can also create a virtual environment to isolate dependencies. Useful if running it inside your own machine:
 ```bash
 # install the virtual environment manager
 sudo apt install python3-venv
