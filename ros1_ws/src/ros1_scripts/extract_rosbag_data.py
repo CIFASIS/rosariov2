@@ -286,10 +286,81 @@ class PoseWithCovarianceStampedProcessor(Msg2CSVProcessor):
         ]
         self.writer.writerow(row)
 
+def check_timestamps(
+        bag_file: rosbag.Bag,
+        args: argparse.Namespace,
+) -> dict[str, int]:
+    def floatsec_to_intnsec(float_sec):
+        int_sec = int(float_sec)
+        rem_sec = float_sec - int_sec
+        rem_nsec = int(rem_sec * int(1e9))
+        return (int_sec * int(1e9)) + rem_nsec
 
-def extraxct_rosbag_data(
-        bag_file: rosbag.Bag, processors: Dict[str, MsgProcessor]):
+    params: dict[str, int] = {}
+
+    start_nsec = floatsec_to_intnsec(bag_file.get_start_time())
+    params['bag_start'] = start_nsec
+    end_nsec = floatsec_to_intnsec(bag_file.get_end_time())
+    params['bag_end'] = end_nsec
+
+    def check_timestamp_validity(
+            time: int | None,
+            name: str,
+            params: dict[str, int]
+    ) -> dict[str, int]:
+        if time is not None:
+            params[name] = time
+            if time < start_nsec:
+                print(f"Provided {name} time is lower than rosbag start time")
+                exit(1)
+            if time > end_nsec:
+                print(f"Provided {name} time is higher than rosbag end time")
+                exit(1) 
+
+        return params
+
+    params = check_timestamp_validity(args.start, 'start', params)
+    params = check_timestamp_validity(args.end, 'end', params)
+
+    if args.start is not None and args.end is not None:
+        if args.start > args.end:
+            print(f"Provided start time is higher than end time")
+            exit(1)
+
+    # transform offset to unix epoch to compare with bag times
+    params = check_timestamp_validity(args.start_offset + start_nsec, 'start_offset', params)
+    params = check_timestamp_validity(args.end_offset + start_nsec, 'end_offset', params)
+
+    if params['start_offset'] is not None and params['end_offset'] is not None:
+        if params['start_offset'] > params['end_offset']:
+            print(f"Provided start time is higher than end time")
+            exit(1)
+
+    return params
+
+def extract_rosbag_data(
+        bag_file: rosbag.Bag,
+        processors: dict[str, MsgProcessor],
+        params: dict[str, int]):
+    start_time = params['bag_start']
+    if params['start'] is not None:
+        start_time = params['start']
+    elif params['start_offset'] is not None:
+        # offset has been made into unix epoch
+        start_time = params['start_offset']
+
+    end_time = params['bag_end']
+    if params['end'] is not None:
+        end_time = params['end']
+    elif params['end_offset'] is not None:
+        # offset has been made into unix epoch
+        end_time = params['end_offset']
+
     for topic, msg, t in bag_file.read_messages(topics=processors.keys()):
+        if t < start_time:
+            continue
+        if t > end_time:
+            break
         if topic not in processors.keys():
             continue
         try:
@@ -319,11 +390,21 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--start', type=int, required=False,
-        help='Time (nsec) from which to start the processing the bag messages.'
+        help='Time (unix epoch time) from which to start processing the bag messages.'
     )
     parser.add_argument(
         '--end', type=int, required=False,
-        help='Time (nsec) up to which to process the bag messages.'
+        help='Time (unix epoch time) up to which to process the bag messages.'
+    )
+    parser.add_argument(
+        '--start_offset', type=int, required=False,
+        help='Time (nsec) from which to start processing the bag messages. ' \
+                'If both --start and --start_offset are set, prefer --start'
+    )
+    parser.add_argument(
+        '--end_offset', type=int, required=False,
+        help='Time (nsec) up to which to process the bag messages. ' \
+                'If both --end and --end_offset are set, prefer --end'
     )
     parser.add_argument(
         '-o', '--output-folder', type=Path, default='.',
@@ -333,9 +414,13 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # check output folder
-    assert(args.output_folder.is_dir()), \
-        f"Path to output {args.output_folder} is not a valid folder."
+    if not args.output_folder.exists():
+        args.output_folder.mkdir()
+    else:
+        # check output folder
+        assert(args.output_folder.is_dir()), \
+            f"Path to output {args.output_folder} is not a valid folder."
+
     output_folder = args.output_folder
 
     TOPIC_TO_PROCESSOR = {
@@ -434,23 +519,11 @@ if __name__ == '__main__':
          if topic in TOPIC_TO_PROCESSOR.keys()}
 
     # check option timestamps
-    def floatsec_to_intnsec(float_sec):
-        int_sec = int(float_sec)
-        rem_sec = float_sec - int_sec
-        rem_nsec = int(rem_sec * int(1e9))
-        return (int_sec * int(1e9)) + rem_nsec
-    start_nsec = floatsec_to_intnsec(bag_file.get_start_time())
-    end_nsec = floatsec_to_intnsec(bag_file.get_end_time())
-    if args.start is not None and args.start < start_nsec:
-        print(f"Provided start time is lower than rosbag start time")
-        exit(1)
-    if args.end is not None and args.end < end_nsec:
-        print(f"Provided start time is higher than rosbag end time")
-        exit(1)
+    params = check_timestamps(bag_file, args)
 
     # execute data extraction
     print(f'Starting data extraction for {args.bag_path}')
 
-    extraxct_rosbag_data(bag_file, processors=filtered_topic_to_processor)
+    extract_rosbag_data(bag_file, processors=filtered_topic_to_processor, params=params)
 
     print(f'Finished extracting data for {args.bag_path}')
