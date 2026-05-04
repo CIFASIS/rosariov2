@@ -24,6 +24,8 @@ To play the rosbags, run `rosbag play [SEQUENCE.bag]`.
 In ROS2 the rosbags format changed, so we need to convert them into 'mcap's before being able to play them.
 Follow the [Convert from ROS1 to ROS2 docs](./converting_ros1_to_ros2.md).
 
+Once this is done, play the rosbags by running `ros2 bag play [SEQUENCE.bag]`
+
 ## Extracting the data
 
 If you don't have a ROS distribution available, you can use the 'extract_rosbag_data.py' python3 script in 'ros1_ws/src/ros1_scripts/' to extract the data from the rosbags and use them without ROS.
