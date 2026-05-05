@@ -5,3 +5,6 @@ opencv-python
 pyyaml
 rospkg
 tqdm
+
+rosbags
+rosbags-image

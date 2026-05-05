@@ -36,11 +36,23 @@ import argparse
 import csv
 import cv2
 import os
-import rosbag
-from cv_bridge import CvBridge
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, override
+import sys
 
+try:
+    import rosbag
+    from cv_bridge import CvBridge
+    cv_bridge = CvBridge()
+except ModuleNotFoundError:
+    rosbag = None
+    cv_bridge = None
+
+    from rosbags.rosbag1 import Reader
+    from rosbags.image import message_to_cvimage
+    from rosbags.typesys import Stores, get_typestore
+
+    typestore = get_typestore(Stores.ROS1_NOETIC)
 
 SCRIPT_DESCRIPTION = \
     "This script allows the extraction of the rosbag data format to plain" \
@@ -83,8 +95,70 @@ OUTPUT_STRUCTURE = \
     │   └── 2023-12-26-15-48-38/
     """
 
+class Bag:
+    def __init__(self, path: Path):
+        super().__init__()
 
-cv_bridge = CvBridge()
+    def get_start_time(self):
+        raise NotImplementedError()
+
+    def get_end_time(self):
+        raise NotImplementedError()
+
+    def read_messages(self, topics):
+        raise NotImplementedError()
+
+    def get_topics(self):
+        raise NotImplementedError()
+
+if rosbag:
+    class BagROS1(Bag):
+        bag: rosbag.Bag
+
+        def __init__(self, path: Path):
+            self.bag = rosbag.Bag(path)
+
+        @override
+        def get_start_time(self):
+            return self.bag.get_start_time()
+
+        @override
+        def get_end_time(self):
+            return self.bag.get_end_time()
+
+        @override
+        def read_messages(self, topics):
+            return self.bag.read_messages(topics)
+
+        @override
+        def get_topics(self):
+            return self.bag.get_type_and_topic_info().topics
+else:
+    class BagRosbags(Bag):
+        bag: Reader
+
+        def __init__(self, path: Path):
+            self.bag = Reader(path)
+            self.bag.open()
+
+        @override
+        def get_start_time(self):
+            return self.bag.start_time
+
+        @override
+        def get_end_time(self):
+            return self.bag.end_time
+
+        @override
+        def read_messages(self, topics):
+            connections = [x for x in self.bag.connections if x.topic in topics]
+            for connection, timestamp, rawdata in self.bag.messages(connections=connections):
+                msg = typestore.deserialize_ros1(rawdata, connection.msgtype)
+                yield connection.topic, msg, timestamp
+
+        @override
+        def get_topics(self):
+            return self.bag.topics
 
 
 class MsgProcessor:
@@ -98,7 +172,6 @@ class MsgProcessor:
     def destroy(self):
         pass
     
-
 class Msg2CSVProcessor(MsgProcessor):
     header : List[str] = []
 
@@ -120,7 +193,7 @@ class Msg2CSVProcessor(MsgProcessor):
     
 
 class ImageProcessor(MsgProcessor):
-    save_path: str = "images/"
+    save_path: Path = Path("images/")
     count: int = 0
 
     def __init__(self, path = None):
@@ -129,12 +202,7 @@ class ImageProcessor(MsgProcessor):
         os.makedirs(self.save_path, exist_ok=True)
 
     def process_message(self, msg, t):
-        cv_img = cv_bridge.imgmsg_to_cv2(msg)
-        if len(cv_img.shape) == 3:
-            cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
-        filename = self.save_path / self._filename_nsec(msg)
-        cv2.imwrite(filename, cv_img)
-        self.count += 1
+        pass
 
     @staticmethod
     def _filename_nsec(msg):
@@ -150,9 +218,29 @@ class ImageProcessor(MsgProcessor):
         """ Returns a filename from an internally increasing count """
         return f'{self.count}.png'
 
+if cv_bridge:
+    class ImageProcessorCVBridge(ImageProcessor):
+        @override
+        def process_message(self, msg, t):
+            cv_img = cv_bridge.imgmsg_to_cv2(msg)
+            if len(cv_img.shape) == 3:
+                cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
+            filename = self.save_path / self._filename_nsec(msg)
+            cv2.imwrite(filename, cv_img)
+            self.count += 1
+else:
+    class ImageProcessorRosbags(ImageProcessor):
+        @override
+        def process_message(self, msg, t):
+            cv_img = message_to_cvimage(msg)
+            if len(cv_img.shape) == 3:
+                cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
+            filename = self.save_path / self._filename_nsec(msg)
+            cv2.imwrite(filename, cv_img)
+            self.count += 1
 
 class NavSatFixProcessor(Msg2CSVProcessor):
-    save_path: str = "navsatfix.csv"
+    save_path: Path = Path("navsatfix.csv")
     header: List[str] = [
         "nsec", "status", "service",
         "latitude", "longitude", "altitude",]
@@ -167,7 +255,7 @@ class NavSatFixProcessor(Msg2CSVProcessor):
 
 
 class IMUProcessor(Msg2CSVProcessor):
-    save_path: str = "imu.csv"
+    save_path: Path = Path("imu.csv")
     header: List[str] = [
         "nsec",
         "orientation", "orientation_covariance",
@@ -205,14 +293,14 @@ class IMUProcessor(Msg2CSVProcessor):
 
 
 class OdometryProcessor(Msg2CSVProcessor):
-    save_path: str = "odometry.csv"
+    save_path: Path = Path("odometry.csv")
 
     def process_message(self, msg, t):
         pass
 
 
 class MagneticFieldProcessor(Msg2CSVProcessor):
-    save_path: str = "magnetic_field.csv"
+    save_path: Path = Path("magnetic_field.csv")
     header: List[str] = [
         "nsec",
         "magnetic_field", "magnetic_field_covariance"]
@@ -233,7 +321,7 @@ class MagneticFieldProcessor(Msg2CSVProcessor):
 
 
 class TwistStampedProcessor(Msg2CSVProcessor):
-    save_path: str = "twist_stamped.csv"
+    save_path: Path = Path("twist_stamped.csv")
     header: List[str] = [
         "nsec",
         "linear", "angular"]
@@ -259,7 +347,7 @@ class TwistStampedProcessor(Msg2CSVProcessor):
 
 
 class PoseWithCovarianceStampedProcessor(Msg2CSVProcessor):
-    save_path: str = "posewcovar_stamped.csv"
+    save_path: Path = Path("posewcovar_stamped.csv")
     header: List[str] = [
         "nsec",
         "position", "orientation", "covariance"]
@@ -287,7 +375,7 @@ class PoseWithCovarianceStampedProcessor(Msg2CSVProcessor):
         self.writer.writerow(row)
 
 def check_timestamps(
-        bag_file: rosbag.Bag,
+        bag_file: Bag,
         args: argparse.Namespace,
 ) -> dict[str, int]:
     def floatsec_to_intnsec(float_sec):
@@ -304,57 +392,59 @@ def check_timestamps(
     params['bag_end'] = end_nsec
 
     def check_timestamp_validity(
-            time: int | None,
+            time: int,
             name: str,
             params: dict[str, int]
     ) -> dict[str, int]:
-        if time is not None:
-            params[name] = time
-            if time < start_nsec:
-                print(f"Provided {name} time is lower than rosbag start time")
-                exit(1)
-            if time > end_nsec:
-                print(f"Provided {name} time is higher than rosbag end time")
-                exit(1) 
-
-        return params
-
-    params = check_timestamp_validity(args.start, 'start', params)
-    params = check_timestamp_validity(args.end, 'end', params)
-
-    if args.start is not None and args.end is not None:
-        if args.start > args.end:
-            print(f"Provided start time is higher than end time")
+        params[name] = time
+        if time < start_nsec:
+            print(f"Provided {name} time {time} is lower than rosbag start time {start_nsec}")
             exit(1)
+        if time > end_nsec:
+            print(f"Provided {name} time {time} is higher than rosbag end time {end_nsec}")
+            exit(1) 
+
+        return params 
+
+    if args.start:
+        params = check_timestamp_validity(args.start, 'start', params)
+    if args.end:
+        params = check_timestamp_validity(args.end, 'end', params)
 
     # transform offset to unix epoch to compare with bag times
-    params = check_timestamp_validity(args.start_offset + start_nsec, 'start_offset', params)
-    params = check_timestamp_validity(args.end_offset + start_nsec, 'end_offset', params)
+    if args.start_offset:
+        params = check_timestamp_validity(args.start_offset + start_nsec, 'start_offset', params)
+    if args.end_offset:
+        params = check_timestamp_validity(args.end_offset + start_nsec, 'end_offset', params)
 
-    if params['start_offset'] is not None and params['end_offset'] is not None:
-        if params['start_offset'] > params['end_offset']:
-            print(f"Provided start time is higher than end time")
-            exit(1)
+    if params.get('start') is not None:
+        params['start_time'] = params['start']
+    elif params.get('start_offset') is not None:
+        # offset has been made into unix epoch
+        params['start_time'] = params['start_offset'] 
+    else:
+        params['start_time'] = params['bag_start']
+        
+    if params.get('end') is not None:
+        params['end_time'] = params['end']
+    elif params.get('end_offset') is not None:
+        # offset has been made into unix epoch
+        params['end_time'] = params['end_offset']
+    else:
+        params['end_time'] = params['bag_end']
+
+    if params['start_time'] > params['end_time']:
+        print(f"Provided start time is higher than end time")
+        exit(1)
 
     return params
 
 def extract_rosbag_data(
-        bag_file: rosbag.Bag,
+        bag_file: Bag,
         processors: dict[str, MsgProcessor],
         params: dict[str, int]):
-    start_time = params['bag_start']
-    if params['start'] is not None:
-        start_time = params['start']
-    elif params['start_offset'] is not None:
-        # offset has been made into unix epoch
-        start_time = params['start_offset']
-
-    end_time = params['bag_end']
-    if params['end'] is not None:
-        end_time = params['end']
-    elif params['end_offset'] is not None:
-        # offset has been made into unix epoch
-        end_time = params['end_offset']
+    start_time = params['start_time']
+    end_time = params['end_time']
 
     for topic, msg, t in bag_file.read_messages(topics=processors.keys()):
         if t < start_time:
@@ -370,7 +460,6 @@ def extract_rosbag_data(
             continue
     for _,proc in processors.items():
         proc.destroy()
-
 
 if __name__ == '__main__':
 
@@ -423,13 +512,7 @@ if __name__ == '__main__':
 
     output_folder = args.output_folder
 
-    TOPIC_TO_PROCESSOR = {
-        '/realsense/color/image_raw': ImageProcessor(
-            path=output_folder/'realsense'/'color'),
-        '/realsense/infra1/image_rect_raw': ImageProcessor(
-            path=output_folder/'realsense'/'infra1'),
-        '/realsense/infra2/image_rect_raw': ImageProcessor(
-            path=output_folder/'realsense'/'infra2'),
+    TOPIC_TO_PROCESSOR: dict[str, MsgProcessor] = {
         '/realsense/imu': IMUProcessor(
             path=output_folder/'realsense'/'imu.csv'),
         '/reach_1/fix': NavSatFixProcessor(
@@ -495,14 +578,37 @@ if __name__ == '__main__':
         ),
     }
 
+    if cv_bridge:
+        TOPIC_TO_PROCESSOR['/realsense/color/image_raw'] = ImageProcessorCVBridge(
+            path=output_folder/'realsense'/'color')
+        TOPIC_TO_PROCESSOR['/realsense/infra1/image_rect_raw'] = ImageProcessorCVBridge(
+            path=output_folder/'realsense'/'infra1')
+        TOPIC_TO_PROCESSOR['/realsense/infra2/image_rect_raw'] = ImageProcessorCVBridge(
+            path=output_folder/'realsense'/'infra2')
+    else:
+        TOPIC_TO_PROCESSOR['/realsense/color/image_raw'] = ImageProcessorRosbags(
+            path=output_folder/'realsense'/'color')
+        TOPIC_TO_PROCESSOR['/realsense/infra1/image_rect_raw'] = ImageProcessorRosbags(
+            path=output_folder/'realsense'/'infra1')
+        TOPIC_TO_PROCESSOR['/realsense/infra2/image_rect_raw'] = ImageProcessorRosbags(
+            path=output_folder/'realsense'/'infra2')
+
+        
+
     # check input path and open rosbag file
     print(f'Opening rosbag located at {args.bag_path}...')
     assert(args.bag_path.is_file()), \
         f"Path to rosbag {args.bag_path} is not a valid path."
-    bag_file = rosbag.Bag(args.bag_path)
+
+    if 'rosbag' in sys.modules:
+        bag_file = BagROS1(args.bag_path)
+    else:
+        bag_file = BagRosbags(args.bag_path)
+        print(f"bag start {bag_file.get_start_time()} and end {bag_file.get_end_time()}")
+        print(f"bag duration {bag_file.bag.duration}")
     
     # filter topics with provided options
-    bag_topics = [topic for topic in bag_file.get_type_and_topic_info().topics]
+    bag_topics = [topic for topic in bag_file.get_topics()]
     topics_not_found = list(set(args.topics) - set(bag_topics))
     skip_not_found = list(set(args.skip) - set(bag_topics))
     not_found = topics_not_found + skip_not_found
