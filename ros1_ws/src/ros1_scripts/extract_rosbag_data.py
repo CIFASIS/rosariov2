@@ -604,8 +604,6 @@ if __name__ == '__main__':
         bag_file = BagROS1(args.bag_path)
     else:
         bag_file = BagRosbags(args.bag_path)
-        print(f"bag start {bag_file.get_start_time()} and end {bag_file.get_end_time()}")
-        print(f"bag duration {bag_file.bag.duration}")
     
     # filter topics with provided options
     bag_topics = [topic for topic in bag_file.get_topics()]
