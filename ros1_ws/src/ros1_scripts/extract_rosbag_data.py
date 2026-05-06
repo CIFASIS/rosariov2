@@ -44,6 +44,7 @@ try:
     import rosbag
     from cv_bridge import CvBridge
     cv_bridge = CvBridge()
+    import rospy.rostime.Time
 except ModuleNotFoundError:
     rosbag = None
     cv_bridge = None
@@ -105,7 +106,7 @@ class Bag:
     def get_end_time(self):
         raise NotImplementedError()
 
-    def read_messages(self, topics):
+    def read_messages(self, topics, start, stop):
         raise NotImplementedError()
 
     def get_topics(self):
@@ -120,19 +121,35 @@ if rosbag:
 
         @override
         def get_start_time(self):
-            return self.bag.get_start_time()
+            return self.floatsec_to_intnsec(self.bag.get_start_time())
 
         @override
         def get_end_time(self):
-            return self.bag.get_end_time()
+            return self.floatsec_to_intnsec(self.bag.get_end_time())
 
         @override
-        def read_messages(self, topics):
-            return self.bag.read_messages(topics)
+        def read_messages(self, topics, start, stop):
+            for topic, msg, t in self.bag.read_messages(
+                        topics,
+                        start_time=Time(self.intnsec_to_floatsec(start)),
+                        end_time=Time(self.intnsec_to_floatsec(stop))
+                    ):
+                yield (topic, msg, self.floatsec_to_intnsec(t))
 
         @override
         def get_topics(self):
             return self.bag.get_type_and_topic_info().topics
+
+        @staticmethod
+        def floatsec_to_intnsec(float_sec):
+            int_sec = int(float_sec)
+            rem_sec = float_sec - int_sec
+            rem_nsec = int(rem_sec * int(1e9))
+            return (int_sec * int(1e9)) + rem_nsec
+
+        @staticmethod
+        def intnsec_to_floatsec(intnsec):
+            return (float(intnsec) / 1e9)
 else:
     class BagRosbags(Bag):
         bag: Reader
@@ -150,9 +167,9 @@ else:
             return self.bag.end_time
 
         @override
-        def read_messages(self, topics):
+        def read_messages(self, topics, start, stop):
             connections = [x for x in self.bag.connections if x.topic in topics]
-            for connection, timestamp, rawdata in self.bag.messages(connections=connections):
+            for connection, timestamp, rawdata in self.bag.messages(connections=connections, start=start, stop=stop):
                 msg = typestore.deserialize_ros1(rawdata, connection.msgtype)
                 yield connection.topic, msg, timestamp
 
@@ -207,7 +224,7 @@ class ImageProcessor(MsgProcessor):
     @staticmethod
     def _filename_nsec(msg):
         """ Returns a filename from the timestamp in nanoseconds """
-        return f'{msg.header.stamp.to_nsec()}.png'
+        return f'{to_nsec(msg.header.stamp)}.png'
     
     @staticmethod
     def _filename_seq(msg):
@@ -248,7 +265,7 @@ class NavSatFixProcessor(Msg2CSVProcessor):
 
     def process_message(self, msg, t):
         row = [
-            msg.header.stamp.to_nsec(), 
+            to_nsec(msg.header.stamp), 
             msg.status.status, msg.status.service
             ] + [getattr(msg, e) for e in self.header[3:]]
         self.writer.writerow(row)
@@ -281,7 +298,7 @@ class IMUProcessor(Msg2CSVProcessor):
         ]
 
         row = [
-            msg.header.stamp.to_nsec(),
+            to_nsec(msg.header.stamp),
             orientation,
             msg.orientation_covariance,
             angular_velocity,
@@ -313,7 +330,7 @@ class MagneticFieldProcessor(Msg2CSVProcessor):
         ]
 
         row = [
-            msg.header.stamp.to_nsec(), 
+            to_nsec(msg.header.stamp), 
             magnetic_field,
             msg.magnetic_field_covariance
         ]
@@ -339,7 +356,7 @@ class TwistStampedProcessor(Msg2CSVProcessor):
         ]
 
         row = [
-            msg.header.stamp.to_nsec(), 
+            to_nsec(msg.header.stamp), 
             linear,
             angular
         ]
@@ -367,28 +384,29 @@ class PoseWithCovarianceStampedProcessor(Msg2CSVProcessor):
         ]
 
         row = [
-            msg.header.stamp.to_nsec(),
+            to_nsec(msg.header.stamp),
             position,
             orientation,
             msg.pose.covariance,
         ]
         self.writer.writerow(row)
 
+def to_nsec(stamp):
+    # if inside a ROS1 environment
+    if cv_bridge:
+        return stamp.to_nsec()
+    else:
+        return stamp.sec * int(1e9) + stamp.nanosec
+
 def check_timestamps(
         bag_file: Bag,
         args: argparse.Namespace,
 ) -> dict[str, int]:
-    def floatsec_to_intnsec(float_sec):
-        int_sec = int(float_sec)
-        rem_sec = float_sec - int_sec
-        rem_nsec = int(rem_sec * int(1e9))
-        return (int_sec * int(1e9)) + rem_nsec
-
     params: dict[str, int] = {}
 
-    start_nsec = floatsec_to_intnsec(bag_file.get_start_time())
+    start_nsec = bag_file.get_start_time()
     params['bag_start'] = start_nsec
-    end_nsec = floatsec_to_intnsec(bag_file.get_end_time())
+    end_nsec = bag_file.get_end_time()
     params['bag_end'] = end_nsec
 
     def check_timestamp_validity(
@@ -446,11 +464,7 @@ def extract_rosbag_data(
     start_time = params['start_time']
     end_time = params['end_time']
 
-    for topic, msg, t in bag_file.read_messages(topics=processors.keys()):
-        if t < start_time:
-            continue
-        if t > end_time:
-            break
+    for topic, msg, t in bag_file.read_messages(topics=processors.keys(), start=start_time, stop=end_time):
         if topic not in processors.keys():
             continue
         try:
