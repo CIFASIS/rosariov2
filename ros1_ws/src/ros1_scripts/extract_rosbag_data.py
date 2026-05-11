@@ -37,14 +37,14 @@ import csv
 import cv2
 import os
 from pathlib import Path
-from typing import List, Dict, override
+from typing import List, Dict
 import sys
 
 try:
     import rosbag
     from cv_bridge import CvBridge
     cv_bridge = CvBridge()
-    import rospy.rostime.Time
+    from rospy import Time
 except ModuleNotFoundError:
     rosbag = None
     cv_bridge = None
@@ -54,6 +54,8 @@ except ModuleNotFoundError:
     from rosbags.typesys import Stores, get_typestore
 
     typestore = get_typestore(Stores.ROS1_NOETIC)
+
+    from typing import override
 
 SCRIPT_DESCRIPTION = \
     "This script allows the extraction of the rosbag data format to plain" \
@@ -119,24 +121,20 @@ if rosbag:
         def __init__(self, path: Path):
             self.bag = rosbag.Bag(path)
 
-        @override
         def get_start_time(self):
             return self.floatsec_to_intnsec(self.bag.get_start_time())
 
-        @override
         def get_end_time(self):
             return self.floatsec_to_intnsec(self.bag.get_end_time())
 
-        @override
         def read_messages(self, topics, start, stop):
             for topic, msg, t in self.bag.read_messages(
                         topics,
                         start_time=Time(self.intnsec_to_floatsec(start)),
                         end_time=Time(self.intnsec_to_floatsec(stop))
                     ):
-                yield (topic, msg, self.floatsec_to_intnsec(t))
+                yield (topic, msg, t.secs * int(1e9) + t.nsecs)
 
-        @override
         def get_topics(self):
             return self.bag.get_type_and_topic_info().topics
 
@@ -237,13 +235,12 @@ class ImageProcessor(MsgProcessor):
 
 if cv_bridge:
     class ImageProcessorCVBridge(ImageProcessor):
-        @override
         def process_message(self, msg, t):
             cv_img = cv_bridge.imgmsg_to_cv2(msg)
             if len(cv_img.shape) == 3:
                 cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
             filename = self.save_path / self._filename_nsec(msg)
-            cv2.imwrite(filename, cv_img)
+            cv2.imwrite(str(filename), cv_img)
             self.count += 1
 else:
     class ImageProcessorRosbags(ImageProcessor):
@@ -253,7 +250,7 @@ else:
             if len(cv_img.shape) == 3:
                 cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
             filename = self.save_path / self._filename_nsec(msg)
-            cv2.imwrite(filename, cv_img)
+            cv2.imwrite(str(filename), cv_img)
             self.count += 1
 
 class NavSatFixProcessor(Msg2CSVProcessor):
@@ -401,8 +398,8 @@ def to_nsec(stamp):
 def check_timestamps(
         bag_file: Bag,
         args: argparse.Namespace,
-) -> dict[str, int]:
-    params: dict[str, int] = {}
+) -> Dict[str, int]:
+    params: Dict[str, int] = {}
 
     start_nsec = bag_file.get_start_time()
     params['bag_start'] = start_nsec
@@ -412,8 +409,8 @@ def check_timestamps(
     def check_timestamp_validity(
             time: int,
             name: str,
-            params: dict[str, int]
-    ) -> dict[str, int]:
+            params: Dict[str, int]
+    ) -> Dict[str, int]:
         params[name] = time
         if time < start_nsec:
             print(f"Provided {name} time {time} is lower than rosbag start time {start_nsec}")
@@ -459,8 +456,8 @@ def check_timestamps(
 
 def extract_rosbag_data(
         bag_file: Bag,
-        processors: dict[str, MsgProcessor],
-        params: dict[str, int]):
+        processors: Dict[str, MsgProcessor],
+        params: Dict[str, int]):
     start_time = params['start_time']
     end_time = params['end_time']
 
@@ -526,7 +523,7 @@ if __name__ == '__main__':
 
     output_folder = args.output_folder
 
-    TOPIC_TO_PROCESSOR: dict[str, MsgProcessor] = {
+    TOPIC_TO_PROCESSOR: Dict[str, MsgProcessor] = {
         '/realsense/imu': IMUProcessor(
             path=output_folder/'realsense'/'imu.csv'),
         '/reach_1/fix': NavSatFixProcessor(
