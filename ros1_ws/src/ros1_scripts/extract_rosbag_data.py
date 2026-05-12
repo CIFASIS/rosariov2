@@ -39,23 +39,8 @@ import os
 from pathlib import Path
 from typing import List, Dict
 import sys
+from abc import ABC, abstractmethod
 
-try:
-    import rosbag
-    from cv_bridge import CvBridge
-    cv_bridge = CvBridge()
-    from rospy import Time
-except ModuleNotFoundError:
-    rosbag = None
-    cv_bridge = None
-
-    from rosbags.rosbag1 import Reader
-    from rosbags.image import message_to_cvimage
-    from rosbags.typesys import Stores, get_typestore
-
-    typestore = get_typestore(Stores.ROS1_NOETIC)
-
-    from typing import override
 
 SCRIPT_DESCRIPTION = \
     "This script allows the extraction of the rosbag data format to plain" \
@@ -98,83 +83,107 @@ OUTPUT_STRUCTURE = \
     │   └── 2023-12-26-15-48-38/
     """
 
-class Bag:
+class Bag(ABC):
     def __init__(self, path: Path):
-        super().__init__()
+        pass
 
+    @abstractmethod
     def get_start_time(self):
         raise NotImplementedError()
 
+    @abstractmethod
     def get_end_time(self):
         raise NotImplementedError()
 
+    @abstractmethod
     def read_messages(self, topics, start, stop):
         raise NotImplementedError()
 
+    @abstractmethod
     def get_topics(self):
         raise NotImplementedError()
 
-if rosbag:
-    class BagROS1(Bag):
-        bag: rosbag.Bag
 
-        def __init__(self, path: Path):
-            self.bag = rosbag.Bag(path)
+def get_bag_handler(path: Path):
+    try:
+        import rosbag
+        from rospy import Time
 
-        def get_start_time(self):
-            return self.floatsec_to_intnsec(self.bag.get_start_time())
+        class NativeBag(Bag):
+            bag: rosbag.Bag
 
-        def get_end_time(self):
-            return self.floatsec_to_intnsec(self.bag.get_end_time())
+            def __init__(self, path: Path):
+                super().__init__(path)
+                self.bag = rosbag.Bag(path)
 
-        def read_messages(self, topics, start, stop):
-            for topic, msg, t in self.bag.read_messages(
-                        topics,
-                        start_time=Time(self.intnsec_to_floatsec(start)),
-                        end_time=Time(self.intnsec_to_floatsec(stop))
-                    ):
-                yield (topic, msg, t.secs * int(1e9) + t.nsecs)
+            def get_start_time(self):
+                return self.floatsec_to_intnsec(self.bag.get_start_time())
 
-        def get_topics(self):
-            return self.bag.get_type_and_topic_info().topics
+            def get_end_time(self):
+                return self.floatsec_to_intnsec(self.bag.get_end_time())
 
-        @staticmethod
-        def floatsec_to_intnsec(float_sec):
-            int_sec = int(float_sec)
-            rem_sec = float_sec - int_sec
-            rem_nsec = int(rem_sec * int(1e9))
-            return (int_sec * int(1e9)) + rem_nsec
+            def read_messages(self, topics, start, stop):
+                for topic, msg, t in self.bag.read_messages(
+                            topics,
+                            start_time=Time(self.intnsec_to_floatsec(start)),
+                            end_time=Time(self.intnsec_to_floatsec(stop))
+                        ):
+                    yield (topic, msg, t.to_nsec())
 
-        @staticmethod
-        def intnsec_to_floatsec(intnsec):
-            return (float(intnsec) / 1e9)
-else:
-    class BagRosbags(Bag):
-        bag: Reader
+            def get_topics(self):
+                return self.bag.get_type_and_topic_info().topics
 
-        def __init__(self, path: Path):
-            self.bag = Reader(path)
-            self.bag.open()
+            @staticmethod
+            def floatsec_to_intnsec(float_sec):
+                int_sec = int(float_sec)
+                rem_sec = float_sec - int_sec
+                rem_nsec = int(rem_sec * int(1e9))
+                return (int_sec * int(1e9)) + rem_nsec
 
-        @override
-        def get_start_time(self):
-            return self.bag.start_time
+            @staticmethod
+            def intnsec_to_floatsec(intnsec):
+                return (float(intnsec) / 1e9)
 
-        @override
-        def get_end_time(self):
-            return self.bag.end_time
+        return NativeBag(path)
+    except ImportError:
+        from rosbags.rosbag1 import Reader
+        from rosbags.typesys import Stores, get_typestore
 
-        @override
-        def read_messages(self, topics, start, stop):
-            connections = [x for x in self.bag.connections if x.topic in topics]
-            for connection, timestamp, rawdata in self.bag.messages(connections=connections, start=start, stop=stop):
-                msg = typestore.deserialize_ros1(rawdata, connection.msgtype)
-                yield connection.topic, msg, timestamp
+        typestore = get_typestore(Stores.ROS1_NOETIC)
 
-        @override
-        def get_topics(self):
-            return self.bag.topics
+        class RosbagsBag(Bag):
+            bag: Reader
 
+            def __init__(self, path: Path):
+                self.bag = Reader(path)
+                self.bag.open()
+
+            def get_start_time(self):
+                return self.bag.start_time
+
+            def get_end_time(self):
+                return self.bag.end_time
+
+            def read_messages(self, topics, start, stop):
+                connections = [x for x in self.bag.connections if x.topic in topics]
+                for connection, timestamp, rawdata in self.bag.messages(connections=connections, start=start, stop=stop):
+                    msg = typestore.deserialize_ros1(rawdata, connection.msgtype)
+                    yield connection.topic, msg, timestamp
+
+            def get_topics(self):
+                return self.bag.topics
+
+        return RosbagsBag(path)
+
+def to_nsec(timestamp):
+    sec = getattr(timestamp, 'sec', None)
+    nsec = getattr(timestamp, 'nanosec', None)
+    if sec is None or nsec is None:
+        # In rospy, the time class has different attribute names.
+        sec = getattr(timestamp, 'secs', None)
+        nsec = getattr(timestamp, 'nsecs', None)
+
+    return sec * int(1e9) + nsec
 
 class MsgProcessor:
 
@@ -185,7 +194,7 @@ class MsgProcessor:
         raise NotImplementedError()
     
     def destroy(self):
-        pass
+        pass 
     
 class Msg2CSVProcessor(MsgProcessor):
     header : List[str] = []
@@ -219,8 +228,7 @@ class ImageProcessor(MsgProcessor):
     def process_message(self, msg, t):
         pass
 
-    @staticmethod
-    def _filename_nsec(msg):
+    def _filename_nsec(self, msg):
         """ Returns a filename from the timestamp in nanoseconds """
         return f'{to_nsec(msg.header.stamp)}.png'
     
@@ -233,25 +241,36 @@ class ImageProcessor(MsgProcessor):
         """ Returns a filename from an internally increasing count """
         return f'{self.count}.png'
 
-if cv_bridge:
-    class ImageProcessorCVBridge(ImageProcessor):
-        def process_message(self, msg, t):
-            cv_img = cv_bridge.imgmsg_to_cv2(msg)
-            if len(cv_img.shape) == 3:
-                cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
-            filename = self.save_path / self._filename_nsec(msg)
-            cv2.imwrite(str(filename), cv_img)
-            self.count += 1
-else:
-    class ImageProcessorRosbags(ImageProcessor):
-        @override
-        def process_message(self, msg, t):
-            cv_img = message_to_cvimage(msg)
-            if len(cv_img.shape) == 3:
-                cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
-            filename = self.save_path / self._filename_nsec(msg)
-            cv2.imwrite(str(filename), cv_img)
-            self.count += 1
+def get_image_processor(path: Path):
+    try:
+        from cv_bridge import CvBridge
+
+        class ImageProcessorCVBridge(ImageProcessor):
+            cv_bridge = CvBridge()
+
+            def process_message(self, msg, t):
+                cv_img = self.cv_bridge.imgmsg_to_cv2(msg)
+                if len(cv_img.shape) == 3:
+                    cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
+                filename = self.save_path / self._filename_nsec(msg)
+                cv2.imwrite(str(filename), cv_img)
+                self.count += 1
+
+        return ImageProcessorCVBridge(path)
+
+    except ImportError:
+        from rosbags.image import message_to_cvimage
+
+        class ImageProcessorRosbags(ImageProcessor):
+            def process_message(self, msg, t):
+                cv_img = message_to_cvimage(msg)
+                if len(cv_img.shape) == 3:
+                    cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
+                filename = self.save_path / self._filename_nsec(msg)
+                cv2.imwrite(str(filename), cv_img)
+                self.count += 1
+
+        return ImageProcessorRosbags(path)
 
 class NavSatFixProcessor(Msg2CSVProcessor):
     save_path: Path = Path("navsatfix.csv")
@@ -388,13 +407,6 @@ class PoseWithCovarianceStampedProcessor(Msg2CSVProcessor):
         ]
         self.writer.writerow(row)
 
-def to_nsec(stamp):
-    # if inside a ROS1 environment
-    if cv_bridge:
-        return stamp.to_nsec()
-    else:
-        return stamp.sec * int(1e9) + stamp.nanosec
-
 def check_timestamps(
         bag_file: Bag,
         args: argparse.Namespace,
@@ -526,6 +538,12 @@ if __name__ == '__main__':
     TOPIC_TO_PROCESSOR: Dict[str, MsgProcessor] = {
         '/realsense/imu': IMUProcessor(
             path=output_folder/'realsense'/'imu.csv'),
+        '/realsense/color/image_raw': get_image_processor(
+            path=output_folder/'realsense'/'color'),
+        '/realsense/infra1/image_rect_raw': get_image_processor(
+            path=output_folder/'realsense'/'infra1'),
+        '/realsense/infra2/image_rect_raw': get_image_processor(
+            path=output_folder/'realsense'/'infra2'),
         '/reach_1/fix': NavSatFixProcessor(
             path=output_folder/'reach1'/'fix.csv'),
         '/reach_1/imu': IMUProcessor(
@@ -589,33 +607,14 @@ if __name__ == '__main__':
         ),
     }
 
-    if cv_bridge:
-        TOPIC_TO_PROCESSOR['/realsense/color/image_raw'] = ImageProcessorCVBridge(
-            path=output_folder/'realsense'/'color')
-        TOPIC_TO_PROCESSOR['/realsense/infra1/image_rect_raw'] = ImageProcessorCVBridge(
-            path=output_folder/'realsense'/'infra1')
-        TOPIC_TO_PROCESSOR['/realsense/infra2/image_rect_raw'] = ImageProcessorCVBridge(
-            path=output_folder/'realsense'/'infra2')
-    else:
-        TOPIC_TO_PROCESSOR['/realsense/color/image_raw'] = ImageProcessorRosbags(
-            path=output_folder/'realsense'/'color')
-        TOPIC_TO_PROCESSOR['/realsense/infra1/image_rect_raw'] = ImageProcessorRosbags(
-            path=output_folder/'realsense'/'infra1')
-        TOPIC_TO_PROCESSOR['/realsense/infra2/image_rect_raw'] = ImageProcessorRosbags(
-            path=output_folder/'realsense'/'infra2')
-
-        
 
     # check input path and open rosbag file
     print(f'Opening rosbag located at {args.bag_path}...')
     assert(args.bag_path.is_file()), \
         f"Path to rosbag {args.bag_path} is not a valid path."
 
-    if 'rosbag' in sys.modules:
-        bag_file = BagROS1(args.bag_path)
-    else:
-        bag_file = BagRosbags(args.bag_path)
-    
+    bag_file = get_bag_handler(args.bag_path)
+
     # filter topics with provided options
     bag_topics = [topic for topic in bag_file.get_topics()]
     topics_not_found = list(set(args.topics) - set(bag_topics))
