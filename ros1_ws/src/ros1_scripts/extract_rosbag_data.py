@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import List, Dict
 import sys
 from abc import ABC, abstractmethod
+from tqdm import tqdm
 
 
 SCRIPT_DESCRIPTION = \
@@ -473,16 +474,21 @@ def extract_rosbag_data(
     start_time = params['start_time']
     end_time = params['end_time']
 
-    for topic, msg, t in bag_file.read_messages(topics=processors.keys(), start=start_time, stop=end_time):
-        if topic not in processors.keys():
-            continue
-        try:
-            processors[topic].process_message(msg, t)
-        except Exception as e:
-            print(e)
-            continue
-    for _,proc in processors.items():
-        proc.destroy()
+    length = end_time - start_time
+    last_time = start_time
+    with tqdm(total=length) as bar:
+        for topic, msg, t in bag_file.read_messages(topics=processors.keys(), start=start_time, stop=end_time):
+            bar.update(t - last_time)
+            last_time = t
+            if topic not in processors.keys():
+                continue
+            try:
+                processors[topic].process_message(msg, t)
+            except Exception as e:
+                print(e)
+                continue
+        for _,proc in processors.items():
+            proc.destroy()
 
 if __name__ == '__main__':
 
