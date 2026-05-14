@@ -40,7 +40,6 @@ from pathlib import Path
 from typing import List, Dict
 import sys
 from abc import ABC, abstractmethod
-from tqdm import tqdm
 
 
 SCRIPT_DESCRIPTION = \
@@ -104,77 +103,81 @@ class Bag(ABC):
     def get_topics(self):
         raise NotImplementedError()
 
+class NativeBag(Bag):
+    def __init__(self, path: Path):
+        super().__init__(path)
 
-def get_bag_handler(path: Path):
-    try:
-        import rosbag
+        from rosbag import Bag
+        self.bag = Bag(path)
+
+    def get_start_time(self):
+        return self.floatsec_to_intnsec(self.bag.get_start_time())
+
+    def get_end_time(self):
+        return self.floatsec_to_intnsec(self.bag.get_end_time())
+
+    def read_messages(self, topics, start, stop):
         from rospy import Time
+        for topic, msg, t in self.bag.read_messages(
+                    topics,
+                    start_time=Time(self.intnsec_to_floatsec(start)),
+                    end_time=Time(self.intnsec_to_floatsec(stop))
+                ):
+            yield (topic, msg, t.to_nsec())
 
-        class NativeBag(Bag):
-            bag: rosbag.Bag
+    def get_topics(self):
+        return self.bag.get_type_and_topic_info().topics
 
-            def __init__(self, path: Path):
-                super().__init__(path)
-                self.bag = rosbag.Bag(path)
+    @staticmethod
+    def floatsec_to_intnsec(float_sec):
+        int_sec = int(float_sec)
+        rem_sec = float_sec - int_sec
+        rem_nsec = int(rem_sec * int(1e9))
+        return (int_sec * int(1e9)) + rem_nsec
 
-            def get_start_time(self):
-                return self.floatsec_to_intnsec(self.bag.get_start_time())
+    @staticmethod
+    def intnsec_to_floatsec(intnsec):
+        return (float(intnsec) / 1e9)
 
-            def get_end_time(self):
-                return self.floatsec_to_intnsec(self.bag.get_end_time())
+class RosbagsBag(Bag):
+    def __init__(self, path: Path):
+        super().__init__(path)
 
-            def read_messages(self, topics, start, stop):
-                for topic, msg, t in self.bag.read_messages(
-                            topics,
-                            start_time=Time(self.intnsec_to_floatsec(start)),
-                            end_time=Time(self.intnsec_to_floatsec(stop))
-                        ):
-                    yield (topic, msg, t.to_nsec())
-
-            def get_topics(self):
-                return self.bag.get_type_and_topic_info().topics
-
-            @staticmethod
-            def floatsec_to_intnsec(float_sec):
-                int_sec = int(float_sec)
-                rem_sec = float_sec - int_sec
-                rem_nsec = int(rem_sec * int(1e9))
-                return (int_sec * int(1e9)) + rem_nsec
-
-            @staticmethod
-            def intnsec_to_floatsec(intnsec):
-                return (float(intnsec) / 1e9)
-
-        return NativeBag(path)
-    except ImportError:
         from rosbags.rosbag1 import Reader
         from rosbags.typesys import Stores, get_typestore
 
-        typestore = get_typestore(Stores.ROS1_NOETIC)
+        self.typestore = get_typestore(Stores.ROS1_NOETIC)
 
-        class RosbagsBag(Bag):
-            bag: Reader
+        self.bag = Reader(path)
+        self.bag.open()
 
-            def __init__(self, path: Path):
-                self.bag = Reader(path)
-                self.bag.open()
+    def get_start_time(self):
+        return self.bag.start_time
 
-            def get_start_time(self):
-                return self.bag.start_time
+    def get_end_time(self):
+        return self.bag.end_time
 
-            def get_end_time(self):
-                return self.bag.end_time
+    def read_messages(self, topics, start, stop):
+        connections = [x for x in self.bag.connections if x.topic in topics]
+        for connection, timestamp, rawdata in self.bag.messages(connections=connections, start=start, stop=stop):
+            msg = self.typestore.deserialize_ros1(rawdata, connection.msgtype)
+            yield connection.topic, msg, timestamp
 
-            def read_messages(self, topics, start, stop):
-                connections = [x for x in self.bag.connections if x.topic in topics]
-                for connection, timestamp, rawdata in self.bag.messages(connections=connections, start=start, stop=stop):
-                    msg = typestore.deserialize_ros1(rawdata, connection.msgtype)
-                    yield connection.topic, msg, timestamp
+    def get_topics(self):
+        return self.bag.topics
 
-            def get_topics(self):
-                return self.bag.topics
+def get_bag_handler(path: Path):
+    try:
+        return NativeBag(path)
+    except ImportError:
+        pass
 
+    try:
         return RosbagsBag(path)
+    except ImportError:
+        pass
+
+    raise ImportError("No libraries found to open rosbags")
 
 def to_nsec(timestamp):
     sec = getattr(timestamp, 'sec', None)
@@ -242,36 +245,50 @@ class ImageProcessor(MsgProcessor):
         """ Returns a filename from an internally increasing count """
         return f'{self.count}.png'
 
+class ImageProcessorCVBridge(ImageProcessor):
+    def __init__(self, path = None):
+        super().__init__(path)
+
+        from cv_bridge import CvBridge
+        cv_bridge = CvBridge()
+
+        self.cv_bridge = CvBridge()
+
+    def process_message(self, msg, t):
+        cv_img = self.cv_bridge.imgmsg_to_cv2(msg)
+        if len(cv_img.shape) == 3:
+            cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
+        filename = self.save_path / self._filename_nsec(msg)
+        cv2.imwrite(str(filename), cv_img)
+        self.count += 1
+
+class ImageProcessorRosbags(ImageProcessor):
+    def __init__(self, path = None):
+        super().__init__(path)
+
+        from rosbags.image import message_to_cvimage
+        self.msg2cvimg = message_to_cvimage
+
+    def process_message(self, msg, t):
+        cv_img = self.msg2cvimg(msg)
+        if len(cv_img.shape) == 3:
+            cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
+        filename = self.save_path / self._filename_nsec(msg)
+        cv2.imwrite(str(filename), cv_img)
+        self.count += 1
+
 def get_image_processor(path: Path):
     try:
-        from cv_bridge import CvBridge
-
-        class ImageProcessorCVBridge(ImageProcessor):
-            cv_bridge = CvBridge()
-
-            def process_message(self, msg, t):
-                cv_img = self.cv_bridge.imgmsg_to_cv2(msg)
-                if len(cv_img.shape) == 3:
-                    cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
-                filename = self.save_path / self._filename_nsec(msg)
-                cv2.imwrite(str(filename), cv_img)
-                self.count += 1
-
         return ImageProcessorCVBridge(path)
-
     except ImportError:
-        from rosbags.image import message_to_cvimage
+        pass
 
-        class ImageProcessorRosbags(ImageProcessor):
-            def process_message(self, msg, t):
-                cv_img = message_to_cvimage(msg)
-                if len(cv_img.shape) == 3:
-                    cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
-                filename = self.save_path / self._filename_nsec(msg)
-                cv2.imwrite(str(filename), cv_img)
-                self.count += 1
-
+    try:
         return ImageProcessorRosbags(path)
+    except ImportError:
+        pass
+
+    raise ImportError("No libraries found to process images")
 
 class NavSatFixProcessor(Msg2CSVProcessor):
     save_path: Path = Path("navsatfix.csv")
@@ -474,6 +491,26 @@ def extract_rosbag_data(
     start_time = params['start_time']
     end_time = params['end_time']
 
+    for topic, msg, t in bag_file.read_messages(topics=processors.keys(), start=start_time, stop=end_time):
+        if topic not in processors.keys():
+            continue
+        try:
+            processors[topic].process_message(msg, t)
+        except Exception as e:
+            print(e)
+            continue
+    for _,proc in processors.items():
+        proc.destroy()
+
+def extract_rosbag_data_with_progress(
+        bag_file: Bag,
+        processors: Dict[str, MsgProcessor],
+        params: Dict[str, int]):
+    from tqdm import tqdm
+
+    start_time = params['start_time']
+    end_time = params['end_time']
+
     length = end_time - start_time
     last_time = start_time
     with tqdm(total=length) as bar:
@@ -644,6 +681,9 @@ if __name__ == '__main__':
     # execute data extraction
     print(f'Starting data extraction for {args.bag_path}')
 
-    extract_rosbag_data(bag_file, processors=filtered_topic_to_processor, params=params)
+    try:
+        extract_rosbag_data_with_progress(bag_file, processors=filtered_topic_to_processor, params=params)
+    except ImportError:
+        extract_rosbag_data(bag_file, processors=filtered_topic_to_processor, params=params)
 
     print(f'Finished extracting data for {args.bag_path}')
