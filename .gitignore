@@ -70,3 +70,6 @@ CATKIN_IGNORE
 build
 install
 log
+
+# Python virtual environment
+venv/

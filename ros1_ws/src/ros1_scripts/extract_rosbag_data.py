@@ -36,10 +36,10 @@ import argparse
 import csv
 import cv2
 import os
-import rosbag
-from cv_bridge import CvBridge
 from pathlib import Path
 from typing import List, Dict
+import sys
+from abc import ABC, abstractmethod
 
 
 SCRIPT_DESCRIPTION = \
@@ -83,9 +83,111 @@ OUTPUT_STRUCTURE = \
     │   └── 2023-12-26-15-48-38/
     """
 
+class Bag(ABC):
+    def __init__(self, path: Path):
+        pass
 
-cv_bridge = CvBridge()
+    @abstractmethod
+    def get_start_time(self):
+        raise NotImplementedError()
 
+    @abstractmethod
+    def get_end_time(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def read_messages(self, topics, start, stop):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_topics(self):
+        raise NotImplementedError()
+
+class NativeBag(Bag):
+    def __init__(self, path: Path):
+        super().__init__(path)
+
+        from rosbag import Bag
+        self.bag = Bag(path)
+
+    def get_start_time(self):
+        return self.floatsec_to_intnsec(self.bag.get_start_time())
+
+    def get_end_time(self):
+        return self.floatsec_to_intnsec(self.bag.get_end_time())
+
+    def read_messages(self, topics, start, stop):
+        from rospy import Time
+        for topic, msg, t in self.bag.read_messages(
+                    topics,
+                    start_time=Time(self.intnsec_to_floatsec(start)),
+                    end_time=Time(self.intnsec_to_floatsec(stop))
+                ):
+            yield (topic, msg, t.to_nsec())
+
+    def get_topics(self):
+        return self.bag.get_type_and_topic_info().topics
+
+    @staticmethod
+    def floatsec_to_intnsec(float_sec):
+        int_sec = int(float_sec)
+        rem_sec = float_sec - int_sec
+        rem_nsec = int(rem_sec * int(1e9))
+        return (int_sec * int(1e9)) + rem_nsec
+
+    @staticmethod
+    def intnsec_to_floatsec(intnsec):
+        return (float(intnsec) / 1e9)
+
+class RosbagsBag(Bag):
+    def __init__(self, path: Path):
+        super().__init__(path)
+
+        from rosbags.rosbag1 import Reader
+        from rosbags.typesys import Stores, get_typestore
+
+        self.typestore = get_typestore(Stores.ROS1_NOETIC)
+
+        self.bag = Reader(path)
+        self.bag.open()
+
+    def get_start_time(self):
+        return self.bag.start_time
+
+    def get_end_time(self):
+        return self.bag.end_time
+
+    def read_messages(self, topics, start, stop):
+        connections = [x for x in self.bag.connections if x.topic in topics]
+        for connection, timestamp, rawdata in self.bag.messages(connections=connections, start=start, stop=stop):
+            msg = self.typestore.deserialize_ros1(rawdata, connection.msgtype)
+            yield connection.topic, msg, timestamp
+
+    def get_topics(self):
+        return self.bag.topics
+
+def get_bag_handler(path: Path):
+    try:
+        return NativeBag(path)
+    except ImportError:
+        pass
+
+    try:
+        return RosbagsBag(path)
+    except ImportError:
+        pass
+
+    raise ImportError("No libraries found to open rosbags")
+
+def to_nsec(timestamp):
+    sec = getattr(timestamp, 'sec', None)
+    nsec = getattr(timestamp, 'nanosec', None)
+    if sec is None or nsec is None:
+        # In rospy, the time class has different attribute names.
+        sec = getattr(timestamp, 'secs', None)
+        nsec = getattr(timestamp, 'nsecs', None)
+
+    return sec * int(1e9) + nsec
 
 class MsgProcessor:
 
@@ -96,9 +198,8 @@ class MsgProcessor:
         raise NotImplementedError()
     
     def destroy(self):
-        pass
+        pass 
     
-
 class Msg2CSVProcessor(MsgProcessor):
     header : List[str] = []
 
@@ -120,7 +221,7 @@ class Msg2CSVProcessor(MsgProcessor):
     
 
 class ImageProcessor(MsgProcessor):
-    save_path: str = "images/"
+    save_path: Path = Path("images/")
     count: int = 0
 
     def __init__(self, path = None):
@@ -129,17 +230,11 @@ class ImageProcessor(MsgProcessor):
         os.makedirs(self.save_path, exist_ok=True)
 
     def process_message(self, msg, t):
-        cv_img = cv_bridge.imgmsg_to_cv2(msg)
-        if len(cv_img.shape) == 3:
-            cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
-        filename = self.save_path / self._filename_nsec(msg)
-        cv2.imwrite(filename, cv_img)
-        self.count += 1
+        pass
 
-    @staticmethod
-    def _filename_nsec(msg):
+    def _filename_nsec(self, msg):
         """ Returns a filename from the timestamp in nanoseconds """
-        return f'{msg.header.stamp.to_nsec()}.png'
+        return f'{to_nsec(msg.header.stamp)}.png'
     
     @staticmethod
     def _filename_seq(msg):
@@ -150,9 +245,53 @@ class ImageProcessor(MsgProcessor):
         """ Returns a filename from an internally increasing count """
         return f'{self.count}.png'
 
+class ImageProcessorCVBridge(ImageProcessor):
+    def __init__(self, path = None):
+        super().__init__(path)
+
+        from cv_bridge import CvBridge
+        cv_bridge = CvBridge()
+
+        self.cv_bridge = CvBridge()
+
+    def process_message(self, msg, t):
+        cv_img = self.cv_bridge.imgmsg_to_cv2(msg)
+        if len(cv_img.shape) == 3:
+            cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
+        filename = self.save_path / self._filename_nsec(msg)
+        cv2.imwrite(str(filename), cv_img)
+        self.count += 1
+
+class ImageProcessorRosbags(ImageProcessor):
+    def __init__(self, path = None):
+        super().__init__(path)
+
+        from rosbags.image import message_to_cvimage
+        self.msg2cvimg = message_to_cvimage
+
+    def process_message(self, msg, t):
+        cv_img = self.msg2cvimg(msg)
+        if len(cv_img.shape) == 3:
+            cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
+        filename = self.save_path / self._filename_nsec(msg)
+        cv2.imwrite(str(filename), cv_img)
+        self.count += 1
+
+def get_image_processor(path: Path):
+    try:
+        return ImageProcessorCVBridge(path)
+    except ImportError:
+        pass
+
+    try:
+        return ImageProcessorRosbags(path)
+    except ImportError:
+        pass
+
+    raise ImportError("No libraries found to process images")
 
 class NavSatFixProcessor(Msg2CSVProcessor):
-    save_path: str = "navsatfix.csv"
+    save_path: Path = Path("navsatfix.csv")
     header: List[str] = [
         "nsec", "status", "service",
         "latitude", "longitude", "altitude",]
@@ -160,14 +299,14 @@ class NavSatFixProcessor(Msg2CSVProcessor):
 
     def process_message(self, msg, t):
         row = [
-            msg.header.stamp.to_nsec(), 
+            to_nsec(msg.header.stamp), 
             msg.status.status, msg.status.service
             ] + [getattr(msg, e) for e in self.header[3:]]
         self.writer.writerow(row)
 
 
 class IMUProcessor(Msg2CSVProcessor):
-    save_path: str = "imu.csv"
+    save_path: Path = Path("imu.csv")
     header: List[str] = [
         "nsec",
         "orientation", "orientation_covariance",
@@ -193,7 +332,7 @@ class IMUProcessor(Msg2CSVProcessor):
         ]
 
         row = [
-            msg.header.stamp.to_nsec(),
+            to_nsec(msg.header.stamp),
             orientation,
             msg.orientation_covariance,
             angular_velocity,
@@ -205,14 +344,14 @@ class IMUProcessor(Msg2CSVProcessor):
 
 
 class OdometryProcessor(Msg2CSVProcessor):
-    save_path: str = "odometry.csv"
+    save_path: Path = Path("odometry.csv")
 
     def process_message(self, msg, t):
         pass
 
 
 class MagneticFieldProcessor(Msg2CSVProcessor):
-    save_path: str = "magnetic_field.csv"
+    save_path: Path = Path("magnetic_field.csv")
     header: List[str] = [
         "nsec",
         "magnetic_field", "magnetic_field_covariance"]
@@ -225,7 +364,7 @@ class MagneticFieldProcessor(Msg2CSVProcessor):
         ]
 
         row = [
-            msg.header.stamp.to_nsec(), 
+            to_nsec(msg.header.stamp), 
             magnetic_field,
             msg.magnetic_field_covariance
         ]
@@ -233,7 +372,7 @@ class MagneticFieldProcessor(Msg2CSVProcessor):
 
 
 class TwistStampedProcessor(Msg2CSVProcessor):
-    save_path: str = "twist_stamped.csv"
+    save_path: Path = Path("twist_stamped.csv")
     header: List[str] = [
         "nsec",
         "linear", "angular"]
@@ -251,7 +390,7 @@ class TwistStampedProcessor(Msg2CSVProcessor):
         ]
 
         row = [
-            msg.header.stamp.to_nsec(), 
+            to_nsec(msg.header.stamp), 
             linear,
             angular
         ]
@@ -259,7 +398,7 @@ class TwistStampedProcessor(Msg2CSVProcessor):
 
 
 class PoseWithCovarianceStampedProcessor(Msg2CSVProcessor):
-    save_path: str = "posewcovar_stamped.csv"
+    save_path: Path = Path("posewcovar_stamped.csv")
     header: List[str] = [
         "nsec",
         "position", "orientation", "covariance"]
@@ -279,17 +418,80 @@ class PoseWithCovarianceStampedProcessor(Msg2CSVProcessor):
         ]
 
         row = [
-            msg.header.stamp.to_nsec(),
+            to_nsec(msg.header.stamp),
             position,
             orientation,
             msg.pose.covariance,
         ]
         self.writer.writerow(row)
 
+def check_timestamps(
+        bag_file: Bag,
+        args: argparse.Namespace,
+) -> Dict[str, int]:
+    params: Dict[str, int] = {}
 
-def extraxct_rosbag_data(
-        bag_file: rosbag.Bag, processors: Dict[str, MsgProcessor]):
-    for topic, msg, t in bag_file.read_messages(topics=processors.keys()):
+    start_nsec = bag_file.get_start_time()
+    params['bag_start'] = start_nsec
+    end_nsec = bag_file.get_end_time()
+    params['bag_end'] = end_nsec
+
+    def check_timestamp_validity(
+            time: int,
+            name: str,
+            params: Dict[str, int]
+    ) -> Dict[str, int]:
+        params[name] = time
+        if time < start_nsec:
+            print(f"Provided {name} time {time} is lower than rosbag start time {start_nsec}")
+            exit(1)
+        if time > end_nsec:
+            print(f"Provided {name} time {time} is higher than rosbag end time {end_nsec}")
+            exit(1) 
+
+        return params 
+
+    if args.start:
+        params = check_timestamp_validity(args.start, 'start', params)
+    if args.end:
+        params = check_timestamp_validity(args.end, 'end', params)
+
+    # transform offset to unix epoch to compare with bag times
+    if args.start_offset:
+        params = check_timestamp_validity(args.start_offset + start_nsec, 'start_offset', params)
+    if args.end_offset:
+        params = check_timestamp_validity(args.end_offset + start_nsec, 'end_offset', params)
+
+    if params.get('start') is not None:
+        params['start_time'] = params['start']
+    elif params.get('start_offset') is not None:
+        # offset has been made into unix epoch
+        params['start_time'] = params['start_offset'] 
+    else:
+        params['start_time'] = params['bag_start']
+        
+    if params.get('end') is not None:
+        params['end_time'] = params['end']
+    elif params.get('end_offset') is not None:
+        # offset has been made into unix epoch
+        params['end_time'] = params['end_offset']
+    else:
+        params['end_time'] = params['bag_end']
+
+    if params['start_time'] > params['end_time']:
+        print(f"Provided start time is higher than end time")
+        exit(1)
+
+    return params
+
+def extract_rosbag_data(
+        bag_file: Bag,
+        processors: Dict[str, MsgProcessor],
+        params: Dict[str, int]):
+    start_time = params['start_time']
+    end_time = params['end_time']
+
+    for topic, msg, t in bag_file.read_messages(topics=processors.keys(), start=start_time, stop=end_time):
         if topic not in processors.keys():
             continue
         try:
@@ -300,6 +502,30 @@ def extraxct_rosbag_data(
     for _,proc in processors.items():
         proc.destroy()
 
+def extract_rosbag_data_with_progress(
+        bag_file: Bag,
+        processors: Dict[str, MsgProcessor],
+        params: Dict[str, int]):
+    from tqdm import tqdm
+
+    start_time = params['start_time']
+    end_time = params['end_time']
+
+    length = end_time - start_time
+    last_time = start_time
+    with tqdm(total=length) as bar:
+        for topic, msg, t in bag_file.read_messages(topics=processors.keys(), start=start_time, stop=end_time):
+            bar.update(t - last_time)
+            last_time = t
+            if topic not in processors.keys():
+                continue
+            try:
+                processors[topic].process_message(msg, t)
+            except Exception as e:
+                print(e)
+                continue
+        for _,proc in processors.items():
+            proc.destroy()
 
 if __name__ == '__main__':
 
@@ -319,11 +545,21 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--start', type=int, required=False,
-        help='Time (nsec) from which to start the processing the bag messages.'
+        help='Time (unix epoch time) from which to start processing the bag messages.'
     )
     parser.add_argument(
         '--end', type=int, required=False,
-        help='Time (nsec) up to which to process the bag messages.'
+        help='Time (unix epoch time) up to which to process the bag messages.'
+    )
+    parser.add_argument(
+        '--start_offset', type=int, required=False,
+        help='Time (nsec) from which to start processing the bag messages. ' \
+                'If both --start and --start_offset are set, prefer --start'
+    )
+    parser.add_argument(
+        '--end_offset', type=int, required=False,
+        help='Time (nsec) up to which to process the bag messages. ' \
+                'If both --end and --end_offset are set, prefer --end'
     )
     parser.add_argument(
         '-o', '--output-folder', type=Path, default='.',
@@ -333,20 +569,24 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # check output folder
-    assert(args.output_folder.is_dir()), \
-        f"Path to output {args.output_folder} is not a valid folder."
+    if not args.output_folder.exists():
+        args.output_folder.mkdir()
+    else:
+        # check output folder
+        assert(args.output_folder.is_dir()), \
+            f"Path to output {args.output_folder} is not a valid folder."
+
     output_folder = args.output_folder
 
-    TOPIC_TO_PROCESSOR = {
-        '/realsense/color/image_raw': ImageProcessor(
-            path=output_folder/'realsense'/'color'),
-        '/realsense/infra1/image_rect_raw': ImageProcessor(
-            path=output_folder/'realsense'/'infra1'),
-        '/realsense/infra2/image_rect_raw': ImageProcessor(
-            path=output_folder/'realsense'/'infra2'),
+    TOPIC_TO_PROCESSOR: Dict[str, MsgProcessor] = {
         '/realsense/imu': IMUProcessor(
             path=output_folder/'realsense'/'imu.csv'),
+        '/realsense/color/image_raw': get_image_processor(
+            path=output_folder/'realsense'/'color'),
+        '/realsense/infra1/image_rect_raw': get_image_processor(
+            path=output_folder/'realsense'/'infra1'),
+        '/realsense/infra2/image_rect_raw': get_image_processor(
+            path=output_folder/'realsense'/'infra2'),
         '/reach_1/fix': NavSatFixProcessor(
             path=output_folder/'reach1'/'fix.csv'),
         '/reach_1/imu': IMUProcessor(
@@ -410,14 +650,16 @@ if __name__ == '__main__':
         ),
     }
 
+
     # check input path and open rosbag file
     print(f'Opening rosbag located at {args.bag_path}...')
     assert(args.bag_path.is_file()), \
         f"Path to rosbag {args.bag_path} is not a valid path."
-    bag_file = rosbag.Bag(args.bag_path)
-    
+
+    bag_file = get_bag_handler(args.bag_path)
+
     # filter topics with provided options
-    bag_topics = [topic for topic in bag_file.get_type_and_topic_info().topics]
+    bag_topics = [topic for topic in bag_file.get_topics()]
     topics_not_found = list(set(args.topics) - set(bag_topics))
     skip_not_found = list(set(args.skip) - set(bag_topics))
     not_found = topics_not_found + skip_not_found
@@ -434,23 +676,14 @@ if __name__ == '__main__':
          if topic in TOPIC_TO_PROCESSOR.keys()}
 
     # check option timestamps
-    def floatsec_to_intnsec(float_sec):
-        int_sec = int(float_sec)
-        rem_sec = float_sec - int_sec
-        rem_nsec = int(rem_sec * int(1e9))
-        return (int_sec * int(1e9)) + rem_nsec
-    start_nsec = floatsec_to_intnsec(bag_file.get_start_time())
-    end_nsec = floatsec_to_intnsec(bag_file.get_end_time())
-    if args.start is not None and args.start < start_nsec:
-        print(f"Provided start time is lower than rosbag start time")
-        exit(1)
-    if args.end is not None and args.end < end_nsec:
-        print(f"Provided start time is higher than rosbag end time")
-        exit(1)
+    params = check_timestamps(bag_file, args)
 
     # execute data extraction
     print(f'Starting data extraction for {args.bag_path}')
 
-    extraxct_rosbag_data(bag_file, processors=filtered_topic_to_processor)
+    try:
+        extract_rosbag_data_with_progress(bag_file, processors=filtered_topic_to_processor, params=params)
+    except ImportError:
+        extract_rosbag_data(bag_file, processors=filtered_topic_to_processor, params=params)
 
     print(f'Finished extracting data for {args.bag_path}')
