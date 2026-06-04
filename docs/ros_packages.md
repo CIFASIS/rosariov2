@@ -10,7 +10,7 @@ We have compiled them as ROS packages, so you can simply copy or link it to your
 
 To build the custom messages for ROS1 you can head to the `ros1_ws` folder and run:
 ```bash
-catkin build wheel_odometry
+catkin_make --only-pkg-with-deps wheel_odometry
 source devel/setup.bash
 ```
 and to build them for ROS2 you can head to the `ros2_ws` folder and run:
@@ -32,7 +32,7 @@ We provide a parameter to switch between these days.
 
 To build the package with the launch file for ROS1 you can head to the `ros1_ws` folder and run:
 ```bash
-catkin build extrinsics
+catkin_make --only-pkg-with-deps extrinsics
 source devel/setup.bash
 ```
 then running it with
