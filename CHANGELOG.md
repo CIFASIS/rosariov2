@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Fix the ROS1 "Distances" message definition. 
+- Fixed the ROS1 "Distances" message definition. 
+- Added script and documentation about the Odometry fix.
 
 
 ## [1.2.0] - 2026-04-28

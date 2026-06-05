@@ -5,7 +5,7 @@ You can check if this is the case for the script you want to run by verifying if
 
 The scripts can be run inside the docker environments directly by installing the dependencies listed in the corresponding requirements.txt files in the folder:
 ```bash
-pip3 install -r scripts/requirements.txt
+python3 -m pip install -r scripts/requirements.txt
 ```
 You can also create a virtual environment to isolate dependencies. Useful if running it inside your own machine:
 ```bash
@@ -15,7 +15,7 @@ sudo apt install python3-venv
 python3 -m venv venv
 source venv/bin/activate
 # install requirements
-pip3 install -r scripts/requirements.txt
+python3 -m pip install -r scripts/requirements.txt
 ```
 
 All scripts can be run with the `--help` parameter to display the description and arguments they take in, such as:
@@ -23,3 +23,11 @@ All scripts can be run with the `--help` parameter to display the description an
 python3 ros1_ws/src/ros1_scripts/extract_rosbag_data.py --help
 ```
 we recommend reading this description to understand how the script works before running any commands.
+
+
+## Available Scripts
+
+- [extract_rosbag_data.py](/ros1_ws/src/ros1_scripts/extract_rosbag_data.py): given a rosbag, extracts all topic messages as plaintext elements, such as images or CSVs.
+- [fix_odom_vel.py](/ros1_ws/src/ros1_scripts/fix_odom_vel.py): generates a bag with an odometry fix (available also for download), check [odometry_fix.md](/docs/odometry_fix.md) for info.
+- [merge_filter_rosbags.py](/ros1_ws/src/ros1_scripts/merge_filter_rosbags.py): merges two rosbags as one, and filters topics for select ones.
+- [rosbag_conversion.sh](/ros1_ws/src/ros1_scripts/rosbags_conversion.sh): runs the conversion of a ROS1 rosbag to a ROS2 rosbag, check [converting_ros1_to_ros2.md](/docs/converting_ros1_to_ros2.md) for info.
