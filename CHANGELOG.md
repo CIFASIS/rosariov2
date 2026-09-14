@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed the ROS1 "Distances" message definition. 
 - Added script and documentation about the Odometry fix.
+- Added an interactive `download_dataset.sh` script to select and download sequences/file types from the dataset server.
 
 
 ## [1.2.0] - 2026-04-28

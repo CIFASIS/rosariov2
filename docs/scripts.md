@@ -27,6 +27,7 @@ we recommend reading this description to understand how the script works before 
 
 ## Available Scripts
 
+- [download_dataset.sh](/scripts/download_dataset.sh): interactively (or non-interactively, via flags) downloads sequences and file types from the dataset server. Does not require ROS or a Python environment, just `bash` and `curl`. Run with `--help` for all options.
 - [extract_rosbag_data.py](/ros1_ws/src/ros1_scripts/extract_rosbag_data.py): given a rosbag, extracts all topic messages as plaintext elements, such as images or CSVs.
 - [fix_odom_vel.py](/ros1_ws/src/ros1_scripts/fix_odom_vel.py): generates a bag with an odometry fix (available also for download), check [odometry_fix.md](/docs/odometry_fix.md) for info.
 - [merge_filter_rosbags.py](/ros1_ws/src/ros1_scripts/merge_filter_rosbags.py): merges two rosbags as one, and filters topics for select ones.
