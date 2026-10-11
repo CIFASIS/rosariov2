@@ -1,0 +1,5 @@
+xacrodoc
+pytransform3d
+pandas
+numpy
+matplotlib
